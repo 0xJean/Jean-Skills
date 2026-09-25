@@ -1,0 +1,4 @@
+interface:
+  display_name: "Web3 EVM Development"
+  short_description: "Build EVM DApps, DeFi integrations, and smart accounts"
+  default_prompt: "Use $web3-evm-dev to complete this EVM development task within the project constraints and verify the affected behavior."
