@@ -1,0 +1,7 @@
+# Pinned validation dependencies; these are not runtime dependencies of a skill.
+PyYAML==6.0.3
+markdown-it-py==4.2.0
+mdurl==0.1.2
+github-slugger==0.0.3
+langdetect==1.0.9
+six==1.17.0
