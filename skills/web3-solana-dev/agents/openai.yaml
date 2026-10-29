@@ -1,0 +1,4 @@
+interface:
+  display_name: "Web3 Solana Development"
+  short_description: "Build Solana programs, token flows, and DApps"
+  default_prompt: "Use $web3-solana-dev to complete this Solana development task within the project constraints and verify the affected behavior."
