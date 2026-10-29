@@ -1,0 +1,12 @@
+# Local files and heading anchors are checked offline on every PR.
+# This separate audit checks real HTTP links, not URLs inside code examples.
+scheme = ["https", "http"]
+include_verbatim = false
+exclude_all_private = true
+max_concurrency = 4
+host_concurrency = 1
+host_request_interval = "1s"
+timeout = 20
+max_retries = 3
+retry_wait_time = 3
+# Keep default success codes: 403, 429, timeouts, and broken links remain failures.
