@@ -43,7 +43,7 @@ skills/web3-solana-dev 目录（包括 references）复制到该 Agent 官方指
 
 ### 使用 Skills CLI 安装
 
-[Vercel Skills CLI](https://github.com/vercel-labs/skills#readme) 是可选的跨 Agent 安装器，会下载本仓库并安装指定技能；它并非每个 Agent 的内置命令。需要 Git 和 Node.js/npm。本次验证使用的 `skills@1.7.0` 要求 Node.js **22.20.0 或更高版本**。
+[Vercel Skills CLI](https://github.com/vercel-labs/skills) 是可选的跨 Agent 安装器，会下载本仓库并安装指定技能；它并非每个 Agent 的内置命令。需要 Git 和 Node.js/npm。本次验证使用的 `skills@1.7.0` 要求 Node.js **22.20.0 或更高版本**。
 
 先查看可安装的技能，不执行安装：
 
@@ -108,8 +108,12 @@ Agent 安装文档核验日期：**2026-09-26**。已使用 `skills@1.7.0` 在�
 
 ```text
 jean-skills/
+├── .github/workflows/         # PR 校验与外部链接审计
 ├── README.md
 ├── README.zh-CN.md
+├── requirements-ci.txt
+├── scripts/validate_skills.py
+├── tests/test_validate_skills.py
 ├── skills/
 │   ├── web3-evm-dev/
 │   │   ├── SKILL.md
@@ -227,5 +231,32 @@ Solana SDK 指引已于 **2026-10-29** 对照官方文档核验。新客户端�
 - 同级技能分别维护生态差异，不依赖彼此的私有文件。仓库级校验工具可在出现实际重复需求时提取。
 - 新增技能时，同时更新中英文 README 索引和 `evals/<skill-name>/scenarios.md`。先验证真实任务，再决定是否增加脚本或模板。
 - 维护 SDK、CLI 示例时核对项目版本及官方文档，不把“最新版本”当作永远有效的常量。
+
+## 持续集成
+
+[Skills CI](.github/workflows/skills-ci.yml) 在 Pull Request、推送到 `main` 及手动触发时运行。**Validate skills** 检查先运行校验器的回归测试，再校验技能集合：
+
+- **格式：** 必须包含 `SKILL.md`，YAML 有效且无重复键，字段及长度符合 Agent Skills 格式，名称与目录一致，指令非空，并校验可选的 OpenAI 界面元数据。
+- **英文内容：** 渲染后的指令、参考正文、界面元数据和验收场景。非拉丁文字正文及高置信度识别出的非英文段落会报错，并定位到文件和行号。语言识别属于启发式检查，不是语法审校；代码示例、URL 和较短的技术标签不参与正文语言分类。根目录的两份 README 继续支持双语。
+- **本地引用：** 检查 Markdown 链接和图片，包括引用式链接、文件是否存在，以及 GitHub 风格的标题锚点。技能内的本地链接在解析符号链接后也必须留在自身目录中，保证可以独立安装。忽略代码示例里的链接。
+
+本地使用 Python 3.12 和独立环境运行同样的检查（以下命令适用于 macOS/Linux）：
+
+```bash
+python3.12 -m venv .venv
+.venv/bin/python -m pip install -r requirements-ci.txt
+.venv/bin/python -m unittest discover -s tests -v
+.venv/bin/python scripts/validate_skills.py
+```
+
+依赖安装完成后，校验器离线运行。它检查 [Agent Skills 格式规则](https://agentskills.io/specification) 和仓库约定，不依赖本机安装的编程 Agent。这些依赖只供维护者和 CI 使用，安装 skill 时不需要安装它们。
+
+[External link audit](.github/workflows/external-links.yml) 每周一及手动触发时检查 HTTP(S) 文档链接，使用固定版本的 Lychee 和 [.lychee.toml](.lychee.toml)。检查会跟随重定向、限制每个站点的请求频率、重试失败请求，并写入 GitHub Actions 任务摘要。包括 403/429 在内的 HTTP 错误及超时仍记为失败；需要根据报告区分页面删除、限流和机器人防护。不检查外部 HTML 页面的锚点。外部网站可用性与 PR 校验分开，避免第三方故障阻塞本身有效的修改。安装 Lychee v0.24.2 后，可本地复现：
+
+```bash
+lychee --config .lychee.toml --no-progress 'README*.md' 'skills/**/*.md' 'evals/**/*.md'
+```
+
+定时和手动工作流需要合并到默认分支后才可使用。本次修改不调整分支保护；首次运行后，维护者可将 **Validate skills** 设为必需检查。
 
 验收输入、环境要求和通过标准见 [EVM 验收案例](evals/web3-evm-dev/scenarios.md) 与 [Solana 验收案例](evals/web3-solana-dev/scenarios.md)。结构校验通过不代表行为验收已通过；执行记录应区分已运行、部分验证和未运行。

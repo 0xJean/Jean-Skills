@@ -45,7 +45,7 @@ For a shared repository installation, replace **“at user scope”** with **“
 
 ### Install with the Skills CLI
 
-The [Vercel Skills CLI](https://github.com/vercel-labs/skills#readme) is an optional cross-agent installer. It downloads this repository and installs the selected skill; it is not a built-in command of every agent. Requires Git and Node.js/npm. The verified CLI version, `skills@1.7.0`, requires Node.js **22.20.0 or newer**.
+The [Vercel Skills CLI](https://github.com/vercel-labs/skills) is an optional cross-agent installer. It downloads this repository and installs the selected skill; it is not a built-in command of every agent. Requires Git and Node.js/npm. The verified CLI version, `skills@1.7.0`, requires Node.js **22.20.0 or newer**.
 
 Preview the available skills without installing:
 
@@ -110,8 +110,12 @@ On **2026-10-29**, the same CLI installed `web3-solana-dev` from the local check
 
 ```text
 jean-skills/
+├── .github/workflows/         # Pull-request validation and external link audit
 ├── README.md
 ├── README.zh-CN.md
+├── requirements-ci.txt
+├── scripts/validate_skills.py
+├── tests/test_validate_skills.py
 ├── skills/
 │   ├── web3-evm-dev/
 │   │   ├── SKILL.md
@@ -229,5 +233,32 @@ Check account-layout compatibility, IDL/client consistency, and authorities; do 
 - Maintain ecosystem differences in sibling skills without depending on each other's private files. Extract repository-level validation tools only when a repeated need appears.
 - When adding a skill, update both README catalogs and `evals/<skill-name>/scenarios.md`. Validate realistic tasks before adding scripts or templates.
 - Check project versions and official documentation when maintaining SDK/CLI examples. Do not treat the latest version as a permanent constant.
+
+## Continuous integration
+
+[Skills CI](.github/workflows/skills-ci.yml) runs on pull requests, pushes to `main`, and manual dispatch. Its **Validate skills** check runs the validator's regression tests and then checks the collection:
+
+- **Format:** required `SKILL.md`, valid YAML without duplicate keys, Agent Skills fields and limits, matching names/directories, nonempty instructions, and optional OpenAI UI metadata.
+- **English content:** rendered instructions, reference prose, UI metadata, and evaluation scenarios. Non-Latin prose and confidently detected non-English passages fail with file/line diagnostics. Language detection is a heuristic, not a grammar check; code examples, URLs, and short technical labels are excluded from prose classification. Both root READMEs remain bilingual.
+- **Local references:** Markdown links and images, including reference-style links, existing files, and GitHub-style heading anchors. Skill-local targets must remain inside that skill, including after resolving symlinks, so each package stays independently installable. Code-example links are ignored.
+
+Run the same checks locally with Python 3.12 and an isolated environment (commands below are for macOS/Linux):
+
+```bash
+python3.12 -m venv .venv
+.venv/bin/python -m pip install -r requirements-ci.txt
+.venv/bin/python -m unittest discover -s tests -v
+.venv/bin/python scripts/validate_skills.py
+```
+
+The validator is offline after dependency installation. [Agent Skills format rules](https://agentskills.io/specification) and repository conventions are checked independently of any locally installed coding agent. The dependencies are for maintainers and CI; installing a skill does not install them.
+
+[External link audit](.github/workflows/external-links.yml) checks HTTP(S) documentation links every Monday and on manual dispatch, using the pinned Lychee version and [.lychee.toml](.lychee.toml). It follows redirects, limits requests per host, retries failures, and writes a GitHub Actions job summary. HTTP errors, including 403/429, and timeouts remain failed checks; inspect the report to distinguish removed pages from rate limits or bot protection. External HTML fragments are not checked. Live-site availability is separate from PR validation so third-party outages do not block otherwise valid changes. To reproduce the audit with Lychee v0.24.2 installed:
+
+```bash
+lychee --config .lychee.toml --no-progress 'README*.md' 'skills/**/*.md' 'evals/**/*.md'
+```
+
+Scheduled and manually dispatched workflows become available after merging them into the default branch. This change does not alter branch protection; maintainers can select **Validate skills** as a required check after it has run.
 
 See the [EVM evaluation scenarios](evals/web3-evm-dev/scenarios.md) and [Solana evaluation scenarios](evals/web3-solana-dev/scenarios.md) for inputs, environment requirements, and acceptance criteria. Structural validation does not establish behavioral correctness; execution records must distinguish completed checks, partial verification, and checks not run.
