@@ -1,8 +1,8 @@
-# Note: If the `dev` Ruleset enforces "Require branches to be up to date before merging"
-# and `dev` is ahead of `main`, GitHub will block merging a direct `main -> dev` PR.
-# Never merge `dev` into `main` to satisfy that check; instead, create a temporary
-# `sync/main-to-dev` branch from `dev`, merge `origin/main` into it (`--no-ff`),
-# and open a Merge commit PR `sync/main-to-dev -> dev`.
+# Opens a direct `main -> dev` PR only when `dev` has not diverged ahead of `main`.
+# When `main` and `dev` have diverged, skips creating a PR that would be blocked by
+# "Require branches to be up to date before merging" on `dev`, and writes exact
+# `sync/main-<sha>-to-dev` commands to the GitHub Actions job summary instead.
+# (Never merge `dev` into `main` to satisfy the up-to-date check.)
 name: Sync main to dev
 
 on:
@@ -15,25 +15,29 @@ permissions:
 
 jobs:
   open-backmerge-pr:
-    name: Open Merge commit back-merge PR to dev
+    name: Sync main back to dev
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Check if dev already contains main
+      - name: Inspect main and dev ancestry
         id: check
         run: |
-          git fetch origin dev
+          git fetch origin main dev
+          MAIN_SHA=$(git rev-parse --short origin/main)
+          echo "main_sha=$MAIN_SHA" >> "$GITHUB_OUTPUT"
           if git merge-base --is-ancestor origin/main origin/dev; then
-            echo "needs_sync=false" >> "$GITHUB_OUTPUT"
+            echo "mode=up_to_date" >> "$GITHUB_OUTPUT"
+          elif git merge-base --is-ancestor origin/dev origin/main; then
+            echo "mode=direct_pr" >> "$GITHUB_OUTPUT"
           else
-            echo "needs_sync=true" >> "$GITHUB_OUTPUT"
+            echo "mode=diverged" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Create back-merge PR (main -> dev)
-        if: steps.check.outputs.needs_sync == 'true'
+      - name: Create direct back-merge PR (main -> dev)
+        if: steps.check.outputs.mode == 'direct_pr'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -47,3 +51,31 @@ jobs:
             --head main \
             --title "chore(sync): back-merge main into dev" \
             --body "Automated back-merge after changes landed on \`main\`. Merge this PR using **Merge commit** (never Squash merge) to preserve Git merge ancestry."
+
+      - name: Publish sync/* instructions when main and dev diverged
+        if: steps.check.outputs.mode == 'diverged'
+        env:
+          MAIN_SHA: ${{ steps.check.outputs.main_sha }}
+        run: |
+          SYNC_BRANCH="sync/main-${MAIN_SHA}-to-dev"
+          echo "::notice::main ($MAIN_SHA) and dev have diverged. Skipped direct main -> dev PR to avoid strict up-to-date check deadlocks; see the job summary for exact sync/* commands."
+          SUMMARY_FILE="${GITHUB_STEP_SUMMARY:-/dev/null}"
+          sed -e "s|__SYNC_BRANCH__|${SYNC_BRANCH}|g" -e "s|__MAIN_SHA__|${MAIN_SHA}|g" <<'EOF' >> "$SUMMARY_FILE"
+          ### Manual back-merge required (`main` and `dev` diverged)
+
+          Skipped creating a direct `main -> dev` PR because `dev` has commits ahead of `main`. Under **Require branches to be up to date before merging**, a direct `main -> dev` PR would be blocked—and you must **never** merge `dev` into `main`.
+
+          Run these commands to back-merge via a temporary `sync/*` branch cut from `origin/dev`:
+
+          ```bash
+          git fetch origin
+          git switch --no-track -c __SYNC_BRANCH__ origin/dev
+          git merge --no-ff origin/main
+          git push -u origin __SYNC_BRANCH__
+          gh pr create \
+            --base dev \
+            --head __SYNC_BRANCH__ \
+            --title "chore(sync): back-merge main (__MAIN_SHA__) into dev" \
+            --body "Back-merge \`main\` (\`__MAIN_SHA__\`) into \`dev\`. Merge using **Merge commit** (never Squash merge)."
+          ```
+          EOF
