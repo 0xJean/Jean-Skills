@@ -54,10 +54,10 @@ Because GitHub auto-closes `Closes #123` / `Fixes #123` **only when the PR merge
 ## Daily development steps
 
 1. **Create or claim the Issue:** Confirm acceptance criteria (or bug reproduction steps) and technical design tier (see [tech-design.md](tech-design.md)).
-2. **Cut a fresh task branch:**
+2. **Cut a fresh task branch from `origin/dev`:**
    ```bash
-   git checkout dev && git pull --ff-only
-   git checkout -b feat/123-sms-login
+   git fetch origin
+   git switch --no-track -c feat/123-sms-login origin/dev
    ```
 3. **Commit with Conventional Commits:**
    - Format: `<type>(<scope>): <concise summary>` (types: `feat`, `fix`, `refactor`, `docs`, `test`, `chore`, `ci`, `perf`).
