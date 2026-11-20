@@ -69,7 +69,7 @@ Configure four Rulesets (or Branch Protection rules if on a plan without Ruleset
 Also enable **Settings -> General -> Pull Requests** and check Actions permissions:
 - Enable **Allow squash merging** (default for task PRs) and **Allow merge commits** (required for `release/* -> main`, `hotfix/* -> main`, `main -> dev`, `release/* -> dev`, and `sync/* -> dev`).
 - Enable **Automatically delete head branches**.
-- For [sync-main-to-dev.yml](../assets/workflows/sync-main-to-dev.yml), enable **Allow GitHub Actions to create and approve pull requests**; note that PRs opened with the default `GITHUB_TOKEN` do not trigger `pull_request` workflows (`pr-dev.yml`), so provide a GitHub App token (preferred) or fine-grained PAT if `dev` requires status checks on automated `main -> dev` PRs.
+- For [sync-main-to-dev.yml](../assets/workflows/sync-main-to-dev.yml), enable **Allow GitHub Actions to create and approve pull requests**; on GitHub.com, `pull_request` (`opened`/`synchronize`/`reopened`) runs created with the default `GITHUB_TOKEN` pause awaiting manual approval from a user with write access—keep `GITHUB_TOKEN` if manual approval is acceptable, or supply a GitHub App token (preferred) or fine-grained PAT for unattended CI runs.
 
 ## Environments and operations separation
 
