@@ -10,8 +10,9 @@
 | --- | --- | --- |
 | [web3-evm-dev](skills/web3-evm-dev/SKILL.md) | EVM 合约、React DApp、DeFi、智能账户、钱包认证及配套后端 | 已实现 |
 | [web3-solana-dev](skills/web3-solana-dev/SKILL.md) | Solana 程序、React DApp、SPL 代币、DeFi 集成、钱包认证及配套后端 | 已实现 |
+| [github-team-workflow](skills/github-team-workflow/SKILL.md) | GitHub 团队分支规范、Rulesets、PR 分流 CI 门禁、Release/RC 产物晋级、P0 Hotfix、Issue/PR 模板及技术方案流程 | 已实现 |
 
-按目标生态选择技能。两个技能均可独立安装，也可以同时安装。
+按目标任务或生态选择技能。每个技能均可独立安装，也可以同时安装。
 
 ## 安装
 
@@ -63,6 +64,12 @@ npx skills add 0xJean/Jean-Skills --skill web3-evm-dev --agent claude-code --glo
 npx skills add 0xJean/Jean-Skills --skill web3-solana-dev --agent claude-code --global --copy
 ```
 
+安装 GitHub 团队协作技能：
+
+```bash
+npx skills add 0xJean/Jean-Skills --skill github-team-workflow --agent claude-code --global --copy
+```
+
 安装到项目时，在目标项目目录执行并去掉 `--global`。可以同时指定多个 Agent：
 
 ```bash
@@ -84,7 +91,7 @@ npx skills add 0xJean/Jean-Skills --skill web3-evm-dev --agent codex cursor --co
 | [Gemini CLI](https://geminicli.com/docs/cli/using-agent-skills/) | `gemini-cli` | `.gemini/skills/` | `~/.gemini/skills/` |
 | [OpenCode](https://opencode.ai/docs/skills/) | `opencode` | `.opencode/skills/` | `~/.config/opencode/skills/` |
 
-手动安装时，克隆或下载[本仓库](https://github.com/0xJean/Jean-Skills)，将 **整个 `skills/web3-evm-dev/` 或 `skills/web3-solana-dev/` 文件夹**复制到选定目录。最终结构必须是 `<技能目录>/<技能名称>/SKILL.md`，并保留同级的 `references/`。只下载 `SKILL.md` 会使参考文档链接失效。更新前检查已有目标，避免在同一个 Agent 会读取的多个目录中重复安装。
+手动安装时，克隆或下载[本仓库](https://github.com/0xJean/Jean-Skills)，将 **整个 `skills/<技能名称>/` 文件夹**（如 `skills/web3-evm-dev/`、`skills/web3-solana-dev/` 或 `skills/github-team-workflow/`）复制到选定目录。最终结构必须是 `<技能目录>/<技能名称>/SKILL.md`，并保留同级的 `references/`、`assets/` 和 `scripts/`（如有）。只下载 `SKILL.md` 会使参考文档链接失效。更新前检查已有目标，避免在同一个 Agent 会读取的多个目录中重复安装。
 
 `agents/openai.yaml` 是可选的 Codex/OpenAI 界面元数据，通用指令不依赖它。复制时可以保留，但不承诺其他 Agent 会使用其中的外观或调用设置。本仓库分发独立 skills，并非 Claude 或 Cursor 插件市场；这些产品的原生市场导入流程需要额外的插件打包。
 
@@ -92,7 +99,7 @@ npx skills add 0xJean/Jean-Skills --skill web3-evm-dev --agent codex cursor --co
 
 ### 验证并使用
 
-确认目标目录包含 `SKILL.md` 和所选技能的全部参考文档：EVM 为 8 份，Solana 为 6 份。下面以 `web3-evm-dev` 为例；检查或调用 Solana 技能时，将其替换为 `web3-solana-dev`：
+确认目标目录包含 `SKILL.md` 和所选技能的全部参考文档：EVM 为 8 份，Solana 为 6 份，`github-team-workflow` 为 4 份（另含 `assets/` 与 `scripts/`）。下面以 `web3-evm-dev` 为例；检查或调用其他技能时，将其替换为 `web3-solana-dev` 或 `github-team-workflow`：
 
 - **Codex：** 使用技能选择器或 CLI/IDE 中的 `/skills`，通过 `$web3-evm-dev` 指定技能；新安装未出现时重启。
 - **Claude Code / Cursor：** 使用 `/web3-evm-dev`；Cursor 也支持通过 `@` 选择技能。
@@ -119,19 +126,26 @@ jean-skills/
 │   │   ├── SKILL.md
 │   │   ├── agents/openai.yaml
 │   │   └── references/        # Contracts, DApp, backend, deployment, and advanced flows
-│   └── web3-solana-dev/
+│   ├── web3-solana-dev/
+│   │   ├── SKILL.md
+│   │   ├── agents/openai.yaml
+│   │   └── references/
+│   │       ├── programs.md
+│   │       ├── testing.md
+│   │       ├── dapp.md
+│   │       ├── backend.md
+│   │       ├── tokens-defi.md
+│   │       └── deployment.md
+│   └── github-team-workflow/
 │       ├── SKILL.md
 │       ├── agents/openai.yaml
-│       └── references/
-│           ├── programs.md
-│           ├── testing.md
-│           ├── dapp.md
-│           ├── backend.md
-│           ├── tokens-defi.md
-│           └── deployment.md
+│       ├── references/        # 日常开发、Release/Hotfix、仓库初始化与技术方案
+│       ├── assets/            # Issue/PR 模板、PR 分流 CI 工作流、AGENTS.md 与方案模板
+│       └── scripts/           # 幂等 GitHub 标签初始化脚本
 └── evals/
     ├── web3-evm-dev/scenarios.md
-    └── web3-solana-dev/scenarios.md
+    ├── web3-solana-dev/scenarios.md
+    └── github-team-workflow/scenarios.md
 ```
 
 `skills/` 保存可分发的技能，`evals/` 保存维护者使用的验收任务。技能运行不依赖仓库根目录、其他技能或 `evals/`。有实际需要时，再在对应技能内添加 `scripts/` 和 `assets/`。
@@ -218,6 +232,16 @@ Solana SDK 指引已于 **2026-10-29** 对照官方文档核验。新客户端�
 核对账户布局兼容性、IDL/客户端一致性及权限；暂不广播。
 ```
 
+```text
+使用 github-team-workflow skill，为当前仓库补齐 .github 模板、dev/main 分流 PR CI 门禁
+和 AGENTS.md，先比对已有文件，不要覆盖仓库原有的 CI 检查。
+```
+
+```text
+使用 github-team-workflow skill，基于 main 为线上故障 Issue #789 准备 P0 hotfix 分支，
+梳理 staging 验证与发版打 tag 步骤，并在合入后通过 Merge commit 回合 dev。
+```
+
 ## 语言约定
 
 - 英文是仓库文档的主要语言。修改共有内容时，同步维护 [英文 README](README.md) 与本中文版。
@@ -259,4 +283,4 @@ lychee --config .lychee.toml --no-progress 'README*.md' 'skills/**/*.md' 'evals/
 
 定时和手动工作流需要合并到默认分支后才可使用。本次修改不调整分支保护；首次运行后，维护者可将 **Validate skills** 设为必需检查。
 
-验收输入、环境要求和通过标准见 [EVM 验收案例](evals/web3-evm-dev/scenarios.md) 与 [Solana 验收案例](evals/web3-solana-dev/scenarios.md)。结构校验通过不代表行为验收已通过；执行记录应区分已运行、部分验证和未运行。
+验收输入、环境要求和通过标准见 [EVM 验收案例](evals/web3-evm-dev/scenarios.md)、[Solana 验收案例](evals/web3-solana-dev/scenarios.md) 与 [GitHub 团队协作验收案例](evals/github-team-workflow/scenarios.md)。结构校验通过不代表行为验收已通过；执行记录应区分已运行、部分验证和未运行。

@@ -1,0 +1,74 @@
+name: PR to dev
+
+on:
+  pull_request:
+    branches: [dev]
+    types: [opened, edited, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  branch-check:
+    name: Validate source branch
+    runs-on: ubuntu-latest
+    steps:
+      - name: Allow task branches and main/sync back-merges
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+        run: |
+          if [[ "$HEAD_REF" == "main" || "$HEAD_REF" =~ ^(feat|fix|chore|refactor|docs|test|ci|perf|sync)/.+ ]]; then
+            echo "Allowed source branch: $HEAD_REF"
+          else
+            echo "Invalid source branch '$HEAD_REF' for dev. Use feat/*, fix/*, chore/*, refactor/*, docs/*, sync/*, or main."
+            exit 1
+          fi
+
+  title-lint:
+    name: Validate Conventional Commit PR title
+    runs-on: ubuntu-latest
+    steps:
+      - uses: amannn/action-semantic-pull-request@v5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  secret-scan:
+    name: Gitleaks secret scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      # Note: gitleaks-action@v2 requires GITLEAKS_LICENSE on GitHub Organization repos.
+      # For org repos without a license, run the open-source gitleaks CLI binary or enable GitHub Secret Scanning.
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
+
+  issue-link-advisory:
+    name: Advisory Issue link check
+    runs-on: ubuntu-latest
+    if: startsWith(github.head_ref, 'feat/') || startsWith(github.head_ref, 'fix/')
+    steps:
+      - name: Warn if PR body does not reference an Issue
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          if echo "$PR_BODY" | grep -Eiq '(closes|fixes|refs)[[:space:]]+#[0-9]+'; then
+            echo "Linked Issue reference found."
+          else
+            echo "::warning::Consider linking a GitHub Issue in the PR description (Closes #123, Fixes #123, or Refs #123 for intermediate PRs)."
+          fi
+
+  ci:
+    name: Lint, unit tests, and build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # Adapt the setup and verification commands below to this repository's stack.
+      - name: Run repository checks
+        run: |
+          echo "Configure lint, unit test (with coverage), and build commands for this repository."
+          exit 1

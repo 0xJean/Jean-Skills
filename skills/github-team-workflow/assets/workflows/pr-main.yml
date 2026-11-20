@@ -1,0 +1,75 @@
+name: PR to main
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, edited, synchronize, reopened, labeled, unlabeled]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  source-check:
+    name: Enforce release/* or hotfix/* source
+    runs-on: ubuntu-latest
+    steps:
+      - name: Allow only release/* and hotfix/* branches
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+        run: |
+          if [[ "$HEAD_REF" =~ ^(release|hotfix)/.+ ]]; then
+            echo "Allowed release/hotfix source branch: $HEAD_REF"
+          else
+            echo "main accepts only release/* or hotfix/* branches; got '$HEAD_REF'."
+            exit 1
+          fi
+
+  qa-gate:
+    name: Verify QA sign-off
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require qa-approved label
+        env:
+          LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
+        run: |
+          if echo "$LABELS" | grep -q '"qa-approved"'; then
+            echo "QA sign-off label present."
+          else
+            echo "Missing required 'qa-approved' label after staging verification."
+            exit 1
+          fi
+
+  dependency-review:
+    name: Dependency vulnerability review
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: high
+
+  secret-scan:
+    name: Gitleaks secret scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      # Note: gitleaks-action@v2 requires GITLEAKS_LICENSE on GitHub Organization repos.
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
+
+  full-verification:
+    name: Full test, integration, and build checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # Adapt the steps below to run lint, unit tests, integration/E2E tests,
+      # database migration validation, and production build checks.
+      - name: Run release verification suite
+        run: |
+          echo "Configure lint, unit, integration/E2E, migration, and build checks for this repository."
+          exit 1

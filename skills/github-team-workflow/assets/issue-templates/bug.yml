@@ -1,0 +1,29 @@
+name: Bug Report
+description: Report a defect in this repository
+labels: ["type:bug"]
+body:
+  - type: textarea
+    id: steps
+    attributes:
+      label: Reproduction Steps
+      description: Minimal steps to reproduce the issue
+    validations:
+      required: true
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Expected vs Actual Behavior
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment and Version
+      placeholder: "e.g. staging, v1.5.0-rc.1, commit sha"
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Logs or Screenshots
+      description: Paste relevant stack traces, request IDs, or screenshots

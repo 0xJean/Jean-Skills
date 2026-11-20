@@ -1,0 +1,43 @@
+# Repository Agent Guidelines
+
+- **Workflow spec:** `v1.0`
+- **Full handbook:** `<engineering-repo-handbook-url>`
+
+## Branching and Merge Rules
+
+- Long-lived branches: `main` (production) and `dev` (integration). Never push directly to or force-push `main`, `dev`, or `release/*`.
+- Cut task branches from latest `dev`: `feat/<id>-<slug>`, `fix/<id>-<slug>`, `chore/<slug>`, `refactor/<slug>`, `docs/<slug>`.
+- Merge task branches into `dev` via **Squash merge**.
+- Merge `release/*` and `hotfix/*` into `main` via **Merge commit**.
+- Back-merge `main -> dev` via **Merge commit** only (never squash-merge `main -> dev`).
+
+## Commits, PRs, and Issues
+
+- Use Conventional Commits for commits and PR titles: `<type>(<scope>): <summary>`.
+- Track bugs and features with GitHub Issues (one `type:feature` Issue per affected repo); link PRs with `Fixes #<id>`, `Refs #<id>` (intermediate PRs of a multi-PR feature), or `Closes #<id>` (final PR).
+- Keep PRs focused on a single concern (target `<= 400` lines). Hide incomplete features behind Feature Flags.
+- If a merged PR breaks `dev`, revert it first rather than patching forward.
+
+## Local Development Commands
+
+Replace the commands below with this repository's real toolchain commands:
+
+```bash
+# Install dependencies: <install-cmd>
+# Lint:                 <lint-cmd>
+# Unit tests:           <test-cmd>
+# Build:                <build-cmd>
+```
+
+## Technical Design Tiers
+
+- **Small** (single module, no API/DB change): brief notes in the feature Issue.
+- **Medium** (API change or multi-module): one-page design in the feature Issue; 1-2 peer reviews before coding.
+- **Large (single repo)** (DB schema, new tech, architectural impact): `docs/design/NNNN-short-name.md` reviewed via PR.
+- **Cross-repo**: `<engineering-repo>/designs/NNNN-short-name.md` reviewed by owners of all affected repos.
+
+## Security and Release Boundaries
+
+- Never commit secrets, API keys, `.env` files, or credentials; `gitleaks` runs on every PR.
+- Never delete, move, or re-push published `v*` tags.
+- Do not modify deployment credentials or production environment rules inside business repositories; follow the ops repository handbook for releases and rollbacks.

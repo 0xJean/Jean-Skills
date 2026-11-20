@@ -10,8 +10,9 @@ A collection of portable Agent Skills for practical development with Codex, Clau
 | --- | --- | --- |
 | [web3-evm-dev](skills/web3-evm-dev/SKILL.md) | EVM contracts, React DApps, DeFi, smart accounts, wallet authentication, and supporting backends | Implemented |
 | [web3-solana-dev](skills/web3-solana-dev/SKILL.md) | Solana programs, React DApps, SPL tokens, DeFi integrations, wallet authentication, and supporting backends | Implemented |
+| [github-team-workflow](skills/github-team-workflow/SKILL.md) | GitHub team branching, Rulesets, split PR CI gates, release/RC promotion, P0 hotfix, Issue/PR templates, and technical design workflows | Implemented |
 
-Choose the skill for the target ecosystem. Both are self-contained and can be installed separately or together.
+Choose the skill for the target task or ecosystem. Each skill is self-contained and can be installed separately or together.
 
 ## Installation
 
@@ -65,6 +66,12 @@ To install the Solana skill:
 npx skills add 0xJean/Jean-Skills --skill web3-solana-dev --agent claude-code --global --copy
 ```
 
+To install the GitHub team workflow skill:
+
+```bash
+npx skills add 0xJean/Jean-Skills --skill github-team-workflow --agent claude-code --global --copy
+```
+
 For project scope, run inside the target project and omit `--global`. Multiple IDs target several agents:
 
 ```bash
@@ -86,7 +93,7 @@ The skill uses the open [Agent Skills format](https://agentskills.io/specificati
 | [Gemini CLI](https://geminicli.com/docs/cli/using-agent-skills/) | `gemini-cli` | `.gemini/skills/` | `~/.gemini/skills/` |
 | [OpenCode](https://opencode.ai/docs/skills/) | `opencode` | `.opencode/skills/` | `~/.config/opencode/skills/` |
 
-For manual installation, clone/download [this repository](https://github.com/0xJean/Jean-Skills), then copy **the entire `skills/web3-evm-dev/` or `skills/web3-solana-dev/` folder** into the chosen directory. The result must be `<skill-directory>/<skill-name>/SKILL.md` with its sibling `references/` intact. Downloading only `SKILL.md` breaks the supporting references. Inspect an existing destination before updating it, and avoid duplicate installations in multiple directories read by the same agent.
+For manual installation, clone/download [this repository](https://github.com/0xJean/Jean-Skills), then copy **the entire `skills/<skill-name>/` folder** (such as `skills/web3-evm-dev/`, `skills/web3-solana-dev/`, or `skills/github-team-workflow/`) into the chosen directory. The result must be `<skill-directory>/<skill-name>/SKILL.md` with its sibling `references/`, `assets/`, and `scripts/` (when present) intact. Downloading only `SKILL.md` breaks the supporting references. Inspect an existing destination before updating it, and avoid duplicate installations in multiple directories read by the same agent.
 
 `agents/openai.yaml` supplies optional Codex/OpenAI UI metadata; the shared instructions do not depend on it. Keep it with the folder, without expecting other agents to use its appearance or invocation settings. This repository distributes standalone skills, not a Claude or Cursor plugin marketplace; their native marketplace import flows require additional packaging.
 
@@ -94,7 +101,7 @@ These paths concern local agents. A cloud agent cannot automatically read your m
 
 ### Verify and use the skill
 
-Confirm that `SKILL.md` and all of the selected skill's references exist at the destination: eight references for EVM, six for Solana. The examples below use `web3-evm-dev`; substitute `web3-solana-dev` when checking or invoking the Solana skill:
+Confirm that `SKILL.md` and all of the selected skill's references exist at the destination: eight references for EVM, six for Solana, and four references (plus `assets/` and `scripts/`) for `github-team-workflow`. The examples below use `web3-evm-dev`; substitute `web3-solana-dev` or `github-team-workflow` when checking or invoking those skills:
 
 - **Codex:** use the skill selector or `/skills` in CLI/IDE, then mention `$web3-evm-dev`. Restart if a newly installed skill does not appear.
 - **Claude Code / Cursor:** invoke `/web3-evm-dev`; Cursor also offers skill selection with `@`.
@@ -121,19 +128,26 @@ jean-skills/
 │   │   ├── SKILL.md
 │   │   ├── agents/openai.yaml
 │   │   └── references/        # Contracts, DApp, backend, deployment, and advanced flows
-│   └── web3-solana-dev/
+│   ├── web3-solana-dev/
+│   │   ├── SKILL.md
+│   │   ├── agents/openai.yaml
+│   │   └── references/
+│   │       ├── programs.md
+│   │       ├── testing.md
+│   │       ├── dapp.md
+│   │       ├── backend.md
+│   │       ├── tokens-defi.md
+│   │       └── deployment.md
+│   └── github-team-workflow/
 │       ├── SKILL.md
 │       ├── agents/openai.yaml
-│       └── references/
-│           ├── programs.md
-│           ├── testing.md
-│           ├── dapp.md
-│           ├── backend.md
-│           ├── tokens-defi.md
-│           └── deployment.md
+│       ├── references/        # Daily dev, release/hotfix, repo bootstrap, and tech design
+│       ├── assets/            # Issue/PR templates, split PR CI workflows, AGENTS.md & design templates
+│       └── scripts/           # Idempotent GitHub label initialization script
 └── evals/
     ├── web3-evm-dev/scenarios.md
-    └── web3-solana-dev/scenarios.md
+    ├── web3-solana-dev/scenarios.md
+    └── github-team-workflow/scenarios.md
 ```
 
 `skills/` contains distributable skills. `evals/` contains evaluation tasks for maintainers. A skill does not depend on the repository root, another skill, or `evals/` at runtime. Add `scripts/` or `assets/` inside a skill only when there is a concrete need.
@@ -220,6 +234,16 @@ Use the web3-solana-dev skill to prepare an upgrade for this deployed program.
 Check account-layout compatibility, IDL/client consistency, and authorities; do not broadcast yet.
 ```
 
+```text
+Use the github-team-workflow skill to bootstrap .github templates, split dev/main PR CI gates,
+and AGENTS.md for this repository without overwriting our existing CI checks.
+```
+
+```text
+Use the github-team-workflow skill to prepare a P0 hotfix from main for Issue #789,
+outline staging validation and release tagging, and open the Merge commit back-merge PR to dev.
+```
+
 ## Language policy
 
 - English is the primary repository documentation language. Keep this README and [its Simplified Chinese version](README.zh-CN.md) aligned when changing shared content.
@@ -261,4 +285,4 @@ lychee --config .lychee.toml --no-progress 'README*.md' 'skills/**/*.md' 'evals/
 
 Scheduled and manually dispatched workflows become available after merging them into the default branch. This change does not alter branch protection; maintainers can select **Validate skills** as a required check after it has run.
 
-See the [EVM evaluation scenarios](evals/web3-evm-dev/scenarios.md) and [Solana evaluation scenarios](evals/web3-solana-dev/scenarios.md) for inputs, environment requirements, and acceptance criteria. Structural validation does not establish behavioral correctness; execution records must distinguish completed checks, partial verification, and checks not run.
+See the [EVM evaluation scenarios](evals/web3-evm-dev/scenarios.md), [Solana evaluation scenarios](evals/web3-solana-dev/scenarios.md), and [GitHub team workflow evaluation scenarios](evals/github-team-workflow/scenarios.md) for inputs, environment requirements, and acceptance criteria. Structural validation does not establish behavioral correctness; execution records must distinguish completed checks, partial verification, and checks not run.
