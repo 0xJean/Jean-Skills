@@ -62,29 +62,33 @@ Rules:
 
 ### Tag commands
 
-Always fetch the target remote branch first, capture the verified commit SHA immediately from `FETCH_HEAD` (works in both full and `--single-branch` clones), and chain verification, tagging, and pushing with `&&` so a failed `git tag -a` never falls through to `git push`. If `git tag -a` fails because the tag name already exists locally, stop and inspect `git show --stat <tag>` to see which commit it points to; delete and recreate it only if that local tag was never pushed to `origin`.
+Always record the exact full commit SHA that passed CI and approval **before** running any tag command, fetch the target remote branch, verify that `FETCH_HEAD^{commit}` still matches that recorded SHA (aborting immediately if another commit landed in the meantime), and chain verification, tagging, and pushing with `&&`. This works in both full and `--single-branch` clones and ensures neither an unpushed local commit nor a newly merged commit can be tagged accidentally. If `git tag -a` fails because the tag name already exists locally, stop and inspect `git show --stat <tag>` to see which commit it points to; delete and recreate it only if that local tag was never pushed to `origin`.
 
 **1. Tag a release candidate (`release/*` -> staging):**
 
 ```bash
-# Confirm CI passed on RC_SHA before pushing
-git fetch origin release/v1.5.0 \
-  && RC_SHA=$(git rev-parse --verify 'FETCH_HEAD^{commit}') \
-  && git show --stat "$RC_SHA" \
-  && git tag -a v1.5.0-rc.1 "$RC_SHA" -m "rc: v1.5.0-rc.1" \
+# Set RC_APPROVED_SHA to the full CI-green commit SHA on release/v1.5.0
+RC_APPROVED_SHA="<ci-green-release-commit-sha>" \
+  && git fetch origin release/v1.5.0 \
+  && REMOTE_RC_SHA=$(git rev-parse --verify 'FETCH_HEAD^{commit}') \
+  && { [ "$REMOTE_RC_SHA" = "$RC_APPROVED_SHA" ] || { echo "Abort: remote release/v1.5.0 ($REMOTE_RC_SHA) != expected SHA ($RC_APPROVED_SHA)" >&2; false; }; } \
+  && git show --stat "$RC_APPROVED_SHA" \
+  && git tag -a v1.5.0-rc.1 "$RC_APPROVED_SHA" -m "rc: v1.5.0-rc.1" \
   && git push origin refs/tags/v1.5.0-rc.1
 ```
 
-**Gate before production tag:** Wait for staging deployment, QA regression sign-off, release PR merge into `main`, green `main` CI, and explicit Release Manager / user approval before running the production tag command below.
+**Gate before production tag:** Wait for staging deployment, QA regression sign-off, release PR merge into `main`, green `main` CI, and explicit Release Manager / user approval on the release PR's exact full merge commit SHA (`APPROVED_SHA`) before running the production tag command below.
 
 **2. Tag a production release or hotfix (`main` -> production):**
 
 ```bash
-# Confirm QA sign-off, green main CI, and explicit approval before pushing
-git fetch origin main \
-  && RELEASE_SHA=$(git rev-parse --verify 'FETCH_HEAD^{commit}') \
-  && git show --stat "$RELEASE_SHA" \
-  && git tag -a v1.5.0 "$RELEASE_SHA" -m "release: v1.5.0" \
+# Set APPROVED_SHA to the full merge commit SHA of the approved release/hotfix PR on main
+APPROVED_SHA="<approved-main-merge-commit-sha>" \
+  && git fetch origin main \
+  && REMOTE_MAIN_SHA=$(git rev-parse --verify 'FETCH_HEAD^{commit}') \
+  && { [ "$REMOTE_MAIN_SHA" = "$APPROVED_SHA" ] || { echo "Abort: remote main ($REMOTE_MAIN_SHA) != approved SHA ($APPROVED_SHA)" >&2; false; }; } \
+  && git show --stat "$APPROVED_SHA" \
+  && git tag -a v1.5.0 "$APPROVED_SHA" -m "release: v1.5.0" \
   && git push origin refs/tags/v1.5.0 \
   && git show --stat v1.5.0
 ```
