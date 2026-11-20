@@ -5,18 +5,24 @@
 
 ## Branching and Merge Rules
 
-- Long-lived branches: `main` (production) and `dev` (integration). Never push directly to or force-push `main`, `dev`, or `release/*`. (In Lite Single-Trunk repos, omit `dev` and merge task branches directly to `main` via Squash.)
-- Cut task branches from remote `dev` (`git fetch origin dev`): `feat/<id>-<slug>`, `fix/<id>-<slug>`, `chore/<slug>`, `refactor/<slug>`, `docs/<slug>`.
-- Merge task branches into `dev` via **Squash merge**.
-- Merge `release/*` and `hotfix/*` into `main` via **Merge commit**.
-- Back-merge `main -> dev` (and freeze-period `release/* -> dev`) via **Merge commit** only—never squash-merge back-merges, and never merge `dev` into `main` or `release/*` (use a temporary `sync/*` branch cut from remote `dev` when diverged).
+<!-- Keep only the topology this repository uses (Standard Dual-Trunk or Lite Single-Trunk) when adapting this template. -->
+
+- **Standard Dual-Trunk (default):**
+  - Long-lived branches: `main` (production) and `dev` (integration). Never push directly to or force-push `main`, `dev`, or `release/*`.
+  - Cut task branches from remote `dev` (`git fetch origin dev`): `feat/<id>-<slug>`, `fix/<id>-<slug>`, `chore/<slug>`, `refactor/<slug>`, `docs/<slug>`.
+  - Merge task branches into `dev` via **Squash merge**.
+  - Merge `release/*` and `hotfix/*` into `main` via **Merge commit**.
+  - Back-merge `main -> dev` (and freeze-period `release/* -> dev`) via **Merge commit** only—never squash-merge back-merges, and never merge `dev` into `main` or `release/*` (use a temporary `sync/*` branch cut from remote `dev` when diverged).
+- **Lite Single-Trunk (omit `dev`):**
+  - Single long-lived branch: `main`. Never push directly to or force-push `main`.
+  - Cut task branches from remote `main` (`git fetch origin main`) and merge them into `main` via **Squash merge**.
 
 ## Commits, PRs, and Issues
 
 - Use Conventional Commits for commits and PR titles: `<type>(<scope>): <summary>`.
 - Track bugs and features with GitHub Issues (one `type:feature` Issue per affected repo); link PRs with `Fixes #<id>`, `Refs #<id>` (intermediate PRs of a multi-PR feature), or `Closes #<id>` (final PR).
 - Keep PRs focused on a single concern (target `<= 400` lines). Hide incomplete features behind Feature Flags.
-- If a merged PR breaks `dev`, revert it first rather than patching forward.
+- If a merged PR breaks the integration trunk (`dev`, or `main` in Lite mode), revert it first rather than patching forward.
 
 ## Local Development Commands
 

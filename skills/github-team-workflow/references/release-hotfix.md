@@ -62,17 +62,25 @@ Rules:
 
 ### Tag commands
 
-Always fetch the target remote branch first, capture the verified commit SHA immediately from `FETCH_HEAD` (works in both full and `--single-branch` clones), and chain verification, tagging, and pushing with `&&` so a failed `git tag -a` never falls through to `git push`. If `git tag -a` fails because the tag name already exists locally, stop and inspect `git show --stat <tag>` to see which commit it points to; delete and recreate it only if that local tag was never pushed to `origin`:
+Always fetch the target remote branch first, capture the verified commit SHA immediately from `FETCH_HEAD` (works in both full and `--single-branch` clones), and chain verification, tagging, and pushing with `&&` so a failed `git tag -a` never falls through to `git push`. If `git tag -a` fails because the tag name already exists locally, stop and inspect `git show --stat <tag>` to see which commit it points to; delete and recreate it only if that local tag was never pushed to `origin`.
+
+**1. Tag a release candidate (`release/*` -> staging):**
 
 ```bash
-# Release candidate on release/v1.5.0 (confirm CI passed on RC_SHA)
+# Confirm CI passed on RC_SHA before pushing
 git fetch origin release/v1.5.0 \
   && RC_SHA=$(git rev-parse --verify 'FETCH_HEAD^{commit}') \
   && git show --stat "$RC_SHA" \
   && git tag -a v1.5.0-rc.1 "$RC_SHA" -m "rc: v1.5.0-rc.1" \
   && git push origin refs/tags/v1.5.0-rc.1
+```
 
-# Production release or hotfix on main (confirm CI green and user approval first)
+**Gate before production tag:** Wait for staging deployment, QA regression sign-off, release PR merge into `main`, green `main` CI, and explicit Release Manager / user approval before running the production tag command below.
+
+**2. Tag a production release or hotfix (`main` -> production):**
+
+```bash
+# Confirm QA sign-off, green main CI, and explicit approval before pushing
 git fetch origin main \
   && RELEASE_SHA=$(git rev-parse --verify 'FETCH_HEAD^{commit}') \
   && git show --stat "$RELEASE_SHA" \
