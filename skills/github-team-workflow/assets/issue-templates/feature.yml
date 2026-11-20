@@ -1,0 +1,38 @@
+name: Feature Request
+description: Track a repository-scoped feature task and technical approach
+labels: ["type:feature"]
+body:
+  - type: input
+    id: prd
+    attributes:
+      label: Product PRD / Tracker Link
+      placeholder: "Link to Feishu, Linear, Jira, or Notion PRD (optional for pure engineering features)"
+    validations:
+      # Set required: true if your organization mandates an external PRD link for every feature.
+      required: false
+  - type: textarea
+    id: scope
+    attributes:
+      label: Repository Scope
+      description: What is in scope and explicitly out of scope for this repository
+    validations:
+      required: true
+  - type: textarea
+    id: design
+    attributes:
+      label: Technical Design
+      description: Brief notes for small features, one-page plan for medium, or link to docs/design or shared engineering design doc for large/cross-repo features
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance Criteria
+      description: Observable criteria required to mark this task complete
+    validations:
+      required: true
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Related / Dependent Issues
+      description: Links to Issues in other repositories if applicable

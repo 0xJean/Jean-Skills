@@ -1,0 +1,4 @@
+interface:
+  display_name: "GitHub Team Workflow"
+  short_description: "Bootstrap and run GitHub team dev, release, and hotfix flows"
+  default_prompt: "Use $github-team-workflow to set up or execute this GitHub team collaboration workflow."

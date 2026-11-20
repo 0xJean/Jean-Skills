@@ -1,0 +1,30 @@
+name: Production Incident (Hotfix)
+description: Report a P0 production incident requiring an expedited hotfix
+labels: ["type:hotfix", "priority:p0"]
+body:
+  - type: textarea
+    id: impact
+    attributes:
+      label: Symptoms and User Impact
+      description: Affected services, error rate, and blast radius
+    validations:
+      required: true
+  - type: input
+    id: detected_at
+    attributes:
+      label: Detection Time
+      placeholder: "e.g. 2026-11-20 14:30 UTC+8"
+    validations:
+      required: true
+  - type: textarea
+    id: mitigation
+    attributes:
+      label: Immediate Mitigation / Containment
+      description: Rollback, traffic shift, feature flag toggle, or temporary workaround
+    validations:
+      required: true
+  - type: textarea
+    id: followup
+    attributes:
+      label: Postmortem and Regression Tests
+      description: Fill in root cause, bypass record (if any), and follow-up tasks after recovery

@@ -1,0 +1,44 @@
+name: Sync main to dev
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  open-backmerge-pr:
+    name: Open Merge commit back-merge PR to dev
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check if dev already contains main
+        id: check
+        run: |
+          git fetch origin dev
+          if git merge-base --is-ancestor origin/main origin/dev; then
+            echo "needs_sync=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "needs_sync=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create back-merge PR (main -> dev)
+        if: steps.check.outputs.needs_sync == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          existing=$(gh pr list --base dev --head main --state open --json number --jq '.[0].number // empty')
+          if [ -n "$existing" ]; then
+            echo "Back-merge PR #$existing already open."
+            exit 0
+          fi
+          gh pr create \
+            --base dev \
+            --head main \
+            --title "chore(sync): back-merge main into dev" \
+            --body "Automated back-merge after changes landed on \`main\`. Merge this PR using **Merge commit** (never Squash merge) to preserve Git merge ancestry."
