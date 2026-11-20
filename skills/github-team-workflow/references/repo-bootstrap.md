@@ -15,7 +15,7 @@ Use this reference when bootstrapping a new repository, auditing an existing rep
     hotfix.yml
     config.yml
   workflows/
-    pr-dev.yml           # Fast PR gate targeting dev only
+    pr-dev.yml           # Fast PR gate targeting dev and release/*
     pr-main.yml          # Strict release/hotfix gate targeting main only
     deploy-dev.yml       # Auto-deploy dev on push to dev (calls ops reusable workflow)
     deploy-staging.yml   # Auto-deploy staging on v*-rc.* tag (calls ops reusable workflow)
@@ -30,15 +30,17 @@ docs/design/             # Single-repo large feature design docs (NNNN-short-nam
 
 Keep `pr-dev.yml` and `pr-main.yml` separate so daily `dev` PRs stay fast (< 10 minutes) while `main` PRs run thorough release verification. Never put `branches: [dev, main]` on a single heavy workflow.
 
-| Aspect | `pr-dev.yml` (`branches: [dev]`) | `pr-main.yml` (`branches: [main]`) |
+| Aspect | `pr-dev.yml` (`branches: [dev, 'release/*']`) | `pr-main.yml` (`branches: [main]`) |
 | --- | --- | --- |
-| Allowed head branches | `feat/*`, `fix/*`, `chore/*`, `refactor/*`, `docs/*`, plus `main` and `sync/*` | **Only** `release/*` and `hotfix/*` (fail all others) |
-| Required checks | Lint, unit tests + coverage, build, Conventional Commit PR title, branch-name check, `gitleaks` secret scan | All `dev` checks + integration/E2E tests, CodeQL, `dependency-review` (block high/critical), DB migration check, release checklist / `qa-approved` verification |
+| Allowed head branches | To `dev`: `feat/*`, `fix/*`, `chore/*`, `refactor/*`, `docs/*`, `main`, `sync/*`. To `release/*`: `fix/*`, `docs/*`, `chore/*` only (code freeze). | **Only** `release/*` and `hotfix/*` (fail all others) |
+| Required checks | Lint, unit tests + coverage, build, Conventional Commit PR title, branch-name check, `gitleaks` secret scan | All `dev` checks + integration/E2E tests, CodeQL, `dependency-review` (block high/critical), DB migration check, release checklist / `qa-approved` signal |
 | Non-blocking helpers | Path labeler, PR size warning (> 400 lines), advisory Issue-link warning on `feat/*`/`fix/*`, AI review comments | Change summary, AI review (advisory only, never counts as approval) |
 | Human approval | 1 reviewer (`CODEOWNERS` optional) | 2 reviewers including `CODEOWNERS` (P0 hotfix uses controlled bypass with 1 review + full CI) |
 | Merge method | Squash for task branches; **Merge commit** for `main`/`sync/*` | **Merge commit** |
 
-Adapt the test/lint/build steps in [pr-dev.yml](../assets/workflows/pr-dev.yml) and [pr-main.yml](../assets/workflows/pr-main.yml) to the repository's actual stack (Node, Python, Go, Rust, Java, etc.) rather than copying Node commands blindly.
+**Required adaptation before committing:** Both [pr-dev.yml](../assets/workflows/pr-dev.yml) and [pr-main.yml](../assets/workflows/pr-main.yml) include an intentional fail-closed `exit 1` placeholder in their `ci` / `full-verification` jobs so an unconfigured template never appears green. Replace those placeholders with the repository's actual lint, test, and build commands (Node, Python, Go, Rust, Java, etc.) during bootstrap.
+
+**QA sign-off identity:** The `qa-approved` label check in [pr-main.yml](../assets/workflows/pr-main.yml) verifies only label presence, not *who* applied the label. Treat it as a workflow reminder; when designated QA identity enforcement is required, enforce sign-off via QA team PR review (`CODEOWNERS` / Ruleset), a GitHub Environment reviewer gate, or an API check verifying an `APPROVED` review from a QA team member.
 
 ### Adapting for Lite Single-Trunk repositories
 
