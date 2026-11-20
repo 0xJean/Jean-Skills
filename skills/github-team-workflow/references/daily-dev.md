@@ -54,11 +54,17 @@ Because GitHub auto-closes `Closes #123` / `Fixes #123` **only when the PR merge
 ## Daily development steps
 
 1. **Create or claim the Issue:** Confirm acceptance criteria (or bug reproduction steps) and technical design tier (see [tech-design.md](tech-design.md)).
-2. **Cut a fresh task branch from `origin/dev`:**
-   ```bash
-   git fetch origin
-   git switch --no-track -c feat/123-sms-login origin/dev
-   ```
+2. **Cut a fresh task branch from the remote base trunk:**
+   - **Standard Dual-Trunk** (from `origin/dev`):
+     ```bash
+     git fetch origin dev
+     git switch --no-track -c feat/123-sms-login origin/dev
+     ```
+   - **Lite Single-Trunk** (repositories with `main` only, no `dev` branch):
+     ```bash
+     git fetch origin main
+     git switch --no-track -c feat/123-sms-login origin/main
+     ```
 3. **Commit with Conventional Commits:**
    - Format: `<type>(<scope>): <concise summary>` (types: `feat`, `fix`, `refactor`, `docs`, `test`, `chore`, `ci`, `perf`).
    - Add `!` after type/scope or a `BREAKING CHANGE:` footer for breaking changes.

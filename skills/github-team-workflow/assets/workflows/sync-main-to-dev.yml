@@ -26,8 +26,10 @@ jobs:
         id: check
         run: |
           git fetch origin main dev
-          MAIN_SHA=$(git rev-parse --short origin/main)
-          echo "main_sha=$MAIN_SHA" >> "$GITHUB_OUTPUT"
+          MAIN_FULL_SHA=$(git rev-parse origin/main)
+          MAIN_SHORT_SHA=$(git rev-parse --short "$MAIN_FULL_SHA")
+          echo "main_full_sha=$MAIN_FULL_SHA" >> "$GITHUB_OUTPUT"
+          echo "main_short_sha=$MAIN_SHORT_SHA" >> "$GITHUB_OUTPUT"
           if git merge-base --is-ancestor origin/main origin/dev; then
             echo "mode=up_to_date" >> "$GITHUB_OUTPUT"
           elif git merge-base --is-ancestor origin/dev origin/main; then
@@ -55,27 +57,31 @@ jobs:
       - name: Publish sync/* instructions when main and dev diverged
         if: steps.check.outputs.mode == 'diverged'
         env:
-          MAIN_SHA: ${{ steps.check.outputs.main_sha }}
+          MAIN_FULL_SHA: ${{ steps.check.outputs.main_full_sha }}
+          MAIN_SHORT_SHA: ${{ steps.check.outputs.main_short_sha }}
         run: |
-          SYNC_BRANCH="sync/main-${MAIN_SHA}-to-dev"
-          echo "::notice::main ($MAIN_SHA) and dev have diverged. Skipped direct main -> dev PR to avoid strict up-to-date check deadlocks; see the job summary for exact sync/* commands."
+          SYNC_BRANCH="sync/main-${MAIN_SHORT_SHA}-to-dev"
+          echo "::notice::main ($MAIN_SHORT_SHA) and dev have diverged. Skipped direct main -> dev PR to avoid strict up-to-date check deadlocks; see the job summary for exact sync/* commands."
           SUMMARY_FILE="${GITHUB_STEP_SUMMARY:-/dev/null}"
-          sed -e "s|__SYNC_BRANCH__|${SYNC_BRANCH}|g" -e "s|__MAIN_SHA__|${MAIN_SHA}|g" <<'EOF' >> "$SUMMARY_FILE"
+          sed \
+            -e "s|__SYNC_BRANCH__|${SYNC_BRANCH}|g" \
+            -e "s|__MAIN_FULL_SHA__|${MAIN_FULL_SHA}|g" \
+            -e "s|__MAIN_SHORT_SHA__|${MAIN_SHORT_SHA}|g" <<'EOF' >> "$SUMMARY_FILE"
           ### Manual back-merge required (`main` and `dev` diverged)
 
           Skipped creating a direct `main -> dev` PR because `dev` has commits ahead of `main`. Under **Require branches to be up to date before merging**, a direct `main -> dev` PR would be blocked—and you must **never** merge `dev` into `main`.
 
-          Run these commands to back-merge via a temporary `sync/*` branch cut from `origin/dev`:
+          Run these commands to back-merge exact commit `__MAIN_FULL_SHA__` via a temporary `sync/*` branch cut from `origin/dev`:
 
           ```bash
           git fetch origin
           git switch --no-track -c __SYNC_BRANCH__ origin/dev
-          git merge --no-ff origin/main
+          git merge --no-ff __MAIN_FULL_SHA__
           git push -u origin __SYNC_BRANCH__
           gh pr create \
             --base dev \
             --head __SYNC_BRANCH__ \
-            --title "chore(sync): back-merge main (__MAIN_SHA__) into dev" \
-            --body "Back-merge \`main\` (\`__MAIN_SHA__\`) into \`dev\`. Merge using **Merge commit** (never Squash merge)."
+            --title "chore(sync): back-merge main (__MAIN_SHORT_SHA__) into dev" \
+            --body "Back-merge \`main\` (\`__MAIN_FULL_SHA__\`) into \`dev\`. Merge using **Merge commit** (never Squash merge)."
           ```
           EOF
