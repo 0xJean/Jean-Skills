@@ -29,7 +29,7 @@ These maintainer scenarios are not runtime dependencies of the skill. Evaluate o
 - Creates `.github/pull_request_template.md`, `.github/ISSUE_TEMPLATE/{bug,feature,hotfix,config}.yml`, `.github/workflows/{pr-dev,pr-main,sync-main-to-dev}.yml`, and `AGENTS.md` (under 200 lines).
 - Adapts CI commands to Python (`pytest`, `ruff`) instead of leaving unadapted Node or placeholder `exit 1` commands.
 - `pr-dev.yml` triggers on `dev` and `release/*` (allowing `main`, `release/*`, and `sync/*` into `dev`, and restricting `release/*` to `fix/*`, `docs/*`, `chore/*`); `pr-main.yml` triggers only on `main` and accepts only `release/*` and `hotfix/*`.
-- Documents Ruleset configuration without enabling `Require linear history` on `dev`, and explains Ruleset bypass for P0 hotfixes and Environment single-reviewer approval behavior accurately.
+- Documents layered Rulesets accurately: no `Require linear history` on `dev`, two layered `main` Rulesets (no-bypass 1-approval + CI baseline layered with 2-approval release Ruleset bypassed for P0 hotfixes), two layered `v*` Tag Rulesets (no-bypass immutability plus `Restrict creations` bypassed by Maintainers / Release Managers), and accurate Environment single-reviewer approval behavior.
 
 ## GHW-03: P0 hotfix and back-merge ancestry preservation
 

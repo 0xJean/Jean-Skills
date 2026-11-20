@@ -36,10 +36,12 @@ jobs:
     name: Verify QA sign-off label
     runs-on: ubuntu-latest
     steps:
-      # Note: checking the `qa-approved` label is a lightweight workflow signal only;
-      # GitHub labels do not verify who applied them. If designated QA sign-off identity
-      # is required, enforce it via QA team PR review / CODEOWNERS, a GitHub Environment
-      # reviewer gate, or a workflow check verifying an APPROVED review from the QA team.
+      # Note: This pre-merge job requires the `qa-approved` label on every PR to `main`
+      # (a lightweight signal that does not verify who applied the label).
+      # - For identity-enforced pre-merge QA sign-off, replace this job with a QA team
+      #   PR review requirement (CODEOWNERS/Ruleset) or an API check for a QA APPROVED review.
+      # - A GitHub Environment approval gate runs post-tag at deployment time and does NOT
+      #   satisfy this job; remove this job if you rely solely on post-tag Environment approval.
       - name: Require qa-approved label
         env:
           LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
