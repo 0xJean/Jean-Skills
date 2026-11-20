@@ -22,15 +22,17 @@ Use this reference when cutting a release branch, tagging release candidates (`r
 - **Forbidden:** new features and unrelated refactors (those continue merging into `dev` for the next release).
 - **Protection:** protect `release/*` with the same PR, review, and CI rules as `main` (no direct push or force push).
 - **Avoid duplicate sync conflicts:** commit freeze fixes via PR into `release/vX.Y.Z`. Do **not** cherry-pick every freeze fix individually back to `dev` if you will merge `main -> dev` at release end; for long freezes, periodically back-merge `release/vX.Y.Z` into `dev` with a Merge commit instead.
-- **When `dev` requires branches to be up to date before merging:** If `dev` has received next-release commits after `release/vX.Y.Z` was cut, GitHub will block a direct `release/vX.Y.Z -> dev` PR until the head branch is updated. **Never** merge `dev` into `release/vX.Y.Z` (that leaks next-release code into the frozen branch). Instead, fetch first, pin the exact remote commit SHA, and cut a uniquely named `sync/*` branch directly from `origin/dev` (avoiding unpushed local `dev` commits and local branch-name collisions across multiple sync rounds):
+- **When `dev` requires branches to be up to date before merging:** If `dev` has received next-release commits after `release/vX.Y.Z` was cut, GitHub will block a direct `release/vX.Y.Z -> dev` PR until the head branch is updated. **Never** merge `dev` into `release/vX.Y.Z` (that leaks next-release code into the frozen branch). Instead, fetch explicitly, pin the remote commit SHAs via `FETCH_HEAD` (safe in `--single-branch` clones and immune to unpushed local `dev` commits), and chain commands with `&&` so nothing pushes if any step fails:
   ```bash
-  git fetch origin
-  FREEZE_FULL_SHA=$(git rev-parse origin/release/v1.5.0)
-  FREEZE_SHORT_SHA=$(git rev-parse --short "$FREEZE_FULL_SHA")
-  SYNC_BRANCH="sync/release-v1.5.0-${FREEZE_SHORT_SHA}-to-dev"
-  git switch --no-track -c "$SYNC_BRANCH" origin/dev
-  git merge --no-ff "$FREEZE_FULL_SHA"
-  git push -u origin "$SYNC_BRANCH"
+  git fetch origin release/v1.5.0 \
+    && FREEZE_FULL_SHA=$(git rev-parse --verify 'FETCH_HEAD^{commit}') \
+    && FREEZE_SHORT_SHA=$(git rev-parse --short "$FREEZE_FULL_SHA") \
+    && SYNC_BRANCH="sync/release-v1.5.0-${FREEZE_SHORT_SHA}-to-dev" \
+    && git fetch origin dev \
+    && DEV_SHA=$(git rev-parse --verify 'FETCH_HEAD^{commit}') \
+    && git switch --no-track -c "$SYNC_BRANCH" "$DEV_SHA" \
+    && git merge --no-ff "$FREEZE_FULL_SHA" \
+    && git push -u origin "$SYNC_BRANCH"
   ```
   Then open a PR `"$SYNC_BRANCH" -> dev` and merge it with **Merge commit** (never Squash). `release/v1.5.0` stays untouched while `dev` receives the freeze fixes and full merge ancestry.
 
@@ -60,23 +62,23 @@ Rules:
 
 ### Tag commands
 
-Always fetch first, verify the CI-green **remote** commit SHA, and pass that SHA explicitly to `git tag -a` so an unpushed local commit on `main` or `release/*` can never be tagged by mistake:
+Always fetch the target remote branch first, capture the verified commit SHA immediately from `FETCH_HEAD` (works in both full and `--single-branch` clones), and chain verification, tagging, and pushing with `&&` so a failed `git tag -a` never falls through to `git push`. If `git tag -a` fails because the tag name already exists locally, stop and inspect `git show --stat <tag>` to see which commit it points to; delete and recreate it only if that local tag was never pushed to `origin`:
 
 ```bash
-# Release candidate on origin/release/v1.5.0 (confirm CI passed on RC_SHA)
-git fetch origin release/v1.5.0
-RC_SHA=$(git rev-parse origin/release/v1.5.0)
-git show --stat "$RC_SHA"
-git tag -a v1.5.0-rc.1 "$RC_SHA" -m "rc: v1.5.0-rc.1"
-git push origin v1.5.0-rc.1
+# Release candidate on release/v1.5.0 (confirm CI passed on RC_SHA)
+git fetch origin release/v1.5.0 \
+  && RC_SHA=$(git rev-parse --verify 'FETCH_HEAD^{commit}') \
+  && git show --stat "$RC_SHA" \
+  && git tag -a v1.5.0-rc.1 "$RC_SHA" -m "rc: v1.5.0-rc.1" \
+  && git push origin refs/tags/v1.5.0-rc.1
 
-# Production release or hotfix on origin/main (confirm CI green and user approval first)
-git fetch origin main
-RELEASE_SHA=$(git rev-parse origin/main)
-git show --stat "$RELEASE_SHA"
-git tag -a v1.5.0 "$RELEASE_SHA" -m "release: v1.5.0"
-git push origin v1.5.0
-git show --stat v1.5.0
+# Production release or hotfix on main (confirm CI green and user approval first)
+git fetch origin main \
+  && RELEASE_SHA=$(git rev-parse --verify 'FETCH_HEAD^{commit}') \
+  && git show --stat "$RELEASE_SHA" \
+  && git tag -a v1.5.0 "$RELEASE_SHA" -m "release: v1.5.0" \
+  && git push origin refs/tags/v1.5.0 \
+  && git show --stat v1.5.0
 ```
 
 ## Production approval and separation of duties
@@ -89,10 +91,10 @@ git show --stat v1.5.0
 ## Hotfix workflow (P0 production incidents)
 
 1. **Create incident Issue:** Use the Hotfix template (`type:hotfix`, `priority:p0`) with impact, detection time, and immediate mitigation.
-2. **Cut from `origin/main` (never from `dev` or an unpushed local `main`):**
+2. **Cut from remote `main` (never from `dev` or an unpushed local `main`):**
    ```bash
-   git fetch origin
-   git switch --no-track -c hotfix/789-payment-crash origin/main
+   git fetch origin main \
+     && git switch --no-track -c hotfix/789-payment-crash "$(git rev-parse --verify 'FETCH_HEAD^{commit}')"
    ```
 3. **Fix and add regression test:** Keep the patch minimal and targeted.
 4. **Validate on `staging` before merging to `main`:**
@@ -112,10 +114,10 @@ git show --stat v1.5.0
 - **When NOT to use `cherry-pick`:** Regular `dev -> main` releases or bulk commit transfers (cherry-pick creates new commit hashes and causes future merge conflicts).
 - Always pass `-x` (and `-m 1` for merge commits):
   ```bash
-  git fetch origin
-  git switch --no-track -c sync/hotfix-789-to-dev origin/dev
-  git cherry-pick -x <commit-hash>
-  git push -u origin sync/hotfix-789-to-dev
+  git fetch origin dev \
+    && git switch --no-track -c sync/hotfix-789-to-dev "$(git rev-parse --verify 'FETCH_HEAD^{commit}')" \
+    && git cherry-pick -x <commit-hash> \
+    && git push -u origin sync/hotfix-789-to-dev
   ```
 
 ## Rollback rules
