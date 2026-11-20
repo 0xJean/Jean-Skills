@@ -32,11 +32,11 @@ Keep `pr-dev.yml` and `pr-main.yml` separate so daily `dev` PRs stay fast (< 10 
 
 | Aspect | `pr-dev.yml` (`branches: [dev, 'release/*']`) | `pr-main.yml` (`branches: [main]`) |
 | --- | --- | --- |
-| Allowed head branches | To `dev`: `feat/*`, `fix/*`, `chore/*`, `refactor/*`, `docs/*`, `main`, `sync/*`. To `release/*`: `fix/*`, `docs/*`, `chore/*` only (code freeze). | **Only** `release/*` and `hotfix/*` (fail all others) |
+| Allowed head branches | To `dev`: `feat/*`, `fix/*`, `chore/*`, `refactor/*`, `docs/*`, `main`, `release/*`, `sync/*`. To `release/*`: `fix/*`, `docs/*`, `chore/*` only (code freeze). | **Only** `release/*` and `hotfix/*` (fail all others) |
 | Required checks | Lint, unit tests + coverage, build, Conventional Commit PR title, branch-name check, `gitleaks` secret scan | All `dev` checks + integration/E2E tests, CodeQL, `dependency-review` (block high/critical), DB migration check, release checklist / `qa-approved` signal |
 | Non-blocking helpers | Path labeler, PR size warning (> 400 lines), advisory Issue-link warning on `feat/*`/`fix/*`, AI review comments | Change summary, AI review (advisory only, never counts as approval) |
 | Human approval | 1 reviewer (`CODEOWNERS` optional) | 2 reviewers including `CODEOWNERS` (P0 hotfix uses controlled bypass with 1 review + full CI) |
-| Merge method | Squash for task branches; **Merge commit** for `main`/`sync/*` | **Merge commit** |
+| Merge method | Squash for task branches; **Merge commit** for `main`/`release/*`/`sync/*` | **Merge commit** |
 
 **Required adaptation before committing:** Both [pr-dev.yml](../assets/workflows/pr-dev.yml) and [pr-main.yml](../assets/workflows/pr-main.yml) include an intentional fail-closed `exit 1` placeholder in their `ci` / `full-verification` jobs so an unconfigured template never appears green. Replace those placeholders with the repository's actual lint, test, and build commands (Node, Python, Go, Rust, Java, etc.) during bootstrap.
 

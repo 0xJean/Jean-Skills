@@ -35,7 +35,7 @@ hotfix/* ──from main──▶ staging check ──PR(Merge)──▶ main �
 ## Non-negotiable guardrails
 
 - **Never squash-merge `main -> dev`:** Back-merging `main` into `dev` must use a **Merge commit** so Git preserves merge ancestry and avoids repeated conflicts. Do not enable `Require linear history` on `dev` in dual-trunk repositories.
-- **Exempt sync branches in `pr-dev.yml`:** Allow `main` and `sync/*` head refs in `dev` branch-name and Issue-link checks so release/hotfix back-merges are never blocked.
+- **Exempt sync branches in `pr-dev.yml`:** Allow `main`, `release/*`, and `sync/*` head refs in `dev` branch-name and Issue-link checks so release/hotfix back-merges are never blocked.
 - **Treat tags as immutable:** Never delete, move, or re-push published `v*` tags. Fix defects with a new `rc` tag (before release) or a new `PATCH` version (after release).
 - **Build once, promote across environments:** Deploy the QA-verified `rc` artifact/image digest to `production` (re-tagging the verified digest to `vX.Y.Z`) rather than rebuilding an untested artifact from the `main` merge commit.
 - **Respect GitHub Ruleset and Environment limits:** Rulesets cannot lower approval counts for `hotfix/*` alone (configure an explicit bypass role for P0 hotfixes while keeping CI mandatory). GitHub Environments' built-in Required Reviewers passes on **any one** approval; enable `Prevent self-review` and use a Custom Deployment Protection Rule if strict multi-person production quorum is required.

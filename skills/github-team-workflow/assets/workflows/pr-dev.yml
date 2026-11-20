@@ -29,10 +29,10 @@ jobs:
               echo "Freeze-period branch '$BASE_REF' accepts only fix/*, docs/*, or chore/*; got '$HEAD_REF'."
               exit 1
             fi
-          elif [[ "$HEAD_REF" == "main" || "$HEAD_REF" =~ ^(feat|fix|chore|refactor|docs|test|ci|perf|sync)/.+ ]]; then
+          elif [[ "$HEAD_REF" == "main" || "$HEAD_REF" =~ ^(feat|fix|chore|refactor|docs|test|ci|perf|sync|release)/.+ ]]; then
             echo "Allowed source branch '$HEAD_REF' for '$BASE_REF'."
           else
-            echo "Invalid source branch '$HEAD_REF' for '$BASE_REF'. Use feat/*, fix/*, chore/*, refactor/*, docs/*, sync/*, or main."
+            echo "Invalid source branch '$HEAD_REF' for '$BASE_REF'. Use feat/*, fix/*, chore/*, refactor/*, docs/*, sync/*, release/*, or main."
             exit 1
           fi
 
