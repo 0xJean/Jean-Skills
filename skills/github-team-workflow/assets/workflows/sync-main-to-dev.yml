@@ -71,17 +71,19 @@ jobs:
 
           Skipped creating a direct `main -> dev` PR because `dev` has commits ahead of `main`. Under **Require branches to be up to date before merging**, a direct `main -> dev` PR would be blocked—and you must **never** merge `dev` into `main`.
 
-          Run these commands to back-merge exact commit `__MAIN_FULL_SHA__` via a temporary `sync/*` branch cut from `origin/dev`:
+          Run these commands to back-merge exact commit `__MAIN_FULL_SHA__` via a temporary `sync/*` branch cut from remote `dev`:
 
           ```bash
-          git fetch origin
-          git switch --no-track -c __SYNC_BRANCH__ origin/dev
-          git merge --no-ff __MAIN_FULL_SHA__
-          git push -u origin __SYNC_BRANCH__
-          gh pr create \
-            --base dev \
-            --head __SYNC_BRANCH__ \
-            --title "chore(sync): back-merge main (__MAIN_SHORT_SHA__) into dev" \
-            --body "Back-merge \`main\` (\`__MAIN_FULL_SHA__\`) into \`dev\`. Merge using **Merge commit** (never Squash merge)."
+          git fetch origin dev \
+            && DEV_SHA=$(git rev-parse --verify 'FETCH_HEAD^{commit}') \
+            && git fetch origin main \
+            && git switch --no-track -c __SYNC_BRANCH__ "$DEV_SHA" \
+            && git merge --no-ff __MAIN_FULL_SHA__ \
+            && git push -u origin __SYNC_BRANCH__ \
+            && gh pr create \
+              --base dev \
+              --head __SYNC_BRANCH__ \
+              --title "chore(sync): back-merge main (__MAIN_SHORT_SHA__) into dev" \
+              --body "Back-merge \`main\` (\`__MAIN_FULL_SHA__\`) into \`dev\`. Merge using **Merge commit** (never Squash merge)."
           ```
           EOF

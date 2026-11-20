@@ -14,7 +14,7 @@ Use this reference when creating Issues, cutting task branches, writing commits,
 Rules:
 - Only `main` and `dev` are long-lived branches; do not create personal long-lived branches.
 - Include the Issue number on feature and bug branches (`feat/123-sms-login`, `fix/456-null-guard`). Omit the number only for tiny chores/typos that do not require an Issue.
-- Keep `dev` always buildable and runnable. Hide unfinished features behind a **Feature Flag**. If a merged PR breaks `dev`, **revert** it first rather than patching forward on a broken trunk.
+- Keep the integration trunk (`dev`, or `main` in Lite mode) always buildable and runnable. Hide unfinished features behind a **Feature Flag**. If a merged PR breaks the trunk, **revert** it first rather than patching forward.
 
 ## Issue workflow and triage
 
@@ -55,15 +55,15 @@ Because GitHub auto-closes `Closes #123` / `Fixes #123` **only when the PR merge
 
 1. **Create or claim the Issue:** Confirm acceptance criteria (or bug reproduction steps) and technical design tier (see [tech-design.md](tech-design.md)).
 2. **Cut a fresh task branch from the remote base trunk:**
-   - **Standard Dual-Trunk** (from `origin/dev`):
+   - **Standard Dual-Trunk** (from remote `dev`):
      ```bash
-     git fetch origin dev
-     git switch --no-track -c feat/123-sms-login origin/dev
+     git fetch origin dev \
+       && git switch --no-track -c feat/123-sms-login "$(git rev-parse --verify 'FETCH_HEAD^{commit}')"
      ```
    - **Lite Single-Trunk** (repositories with `main` only, no `dev` branch):
      ```bash
-     git fetch origin main
-     git switch --no-track -c feat/123-sms-login origin/main
+     git fetch origin main \
+       && git switch --no-track -c feat/123-sms-login "$(git rev-parse --verify 'FETCH_HEAD^{commit}')"
      ```
 3. **Commit with Conventional Commits:**
    - Format: `<type>(<scope>): <concise summary>` (types: `feat`, `fix`, `refactor`, `docs`, `test`, `chore`, `ci`, `perf`).
@@ -76,5 +76,8 @@ Because GitHub auto-closes `Closes #123` / `Fixes #123` **only when the PR merge
    - `CODEOWNERS` auto-assigns reviewers; aim for a 24-hour review SLA.
    - Focus human review on correctness, maintainability, edge cases, and security; leave formatting to linters.
    - After addressing review comments, click **Re-request review**.
-   - Merge into `dev` via **Squash merge** once CI checks pass, conversations are resolved, and required approval (1 reviewer) is granted.
-6. **Verify on `dev`:** Merge to `dev` deploys the `dev` environment automatically for developer self-verification.
+   - **Standard Dual-Trunk:** Merge into `dev` via **Squash merge** once CI checks pass, conversations are resolved, and required approval (1 reviewer) is granted.
+   - **Lite Single-Trunk:** Merge into `main` via **Squash merge** once CI checks pass, conversations are resolved, and required approvals (`1-2` reviewers) are granted.
+6. **Verify after merge:**
+   - **Standard Dual-Trunk:** Merging to `dev` deploys the `dev` environment automatically for developer self-verification.
+   - **Lite Single-Trunk:** Verify through the repository's `main` CI/CD checks or preview/staging deployment flow, then cut releases via tags or automated release PRs.
