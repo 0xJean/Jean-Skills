@@ -22,12 +22,14 @@ Use this reference when cutting a release branch, tagging release candidates (`r
 - **Forbidden:** new features and unrelated refactors (those continue merging into `dev` for the next release).
 - **Protection:** protect `release/*` with the same PR, review, and CI rules as `main` (no direct push or force push).
 - **Avoid duplicate sync conflicts:** commit freeze fixes via PR into `release/vX.Y.Z`. Do **not** cherry-pick every freeze fix individually back to `dev` if you will merge `main -> dev` at release end; for long freezes, periodically back-merge `release/vX.Y.Z` into `dev` with a Merge commit instead.
-- **When `dev` requires branches to be up to date before merging:** If `dev` has received next-release commits after `release/vX.Y.Z` was cut, GitHub will block a direct `release/vX.Y.Z -> dev` PR until the head branch is updated. **Never** merge `dev` into `release/vX.Y.Z` (that leaks next-release code into the frozen branch). Instead, fetch first and cut a uniquely named `sync/*` branch directly from `origin/dev` (avoiding unpushed local `dev` commits and local branch-name collisions across multiple sync rounds):
+- **When `dev` requires branches to be up to date before merging:** If `dev` has received next-release commits after `release/vX.Y.Z` was cut, GitHub will block a direct `release/vX.Y.Z -> dev` PR until the head branch is updated. **Never** merge `dev` into `release/vX.Y.Z` (that leaks next-release code into the frozen branch). Instead, fetch first, pin the exact remote commit SHA, and cut a uniquely named `sync/*` branch directly from `origin/dev` (avoiding unpushed local `dev` commits and local branch-name collisions across multiple sync rounds):
   ```bash
   git fetch origin
-  SYNC_BRANCH="sync/release-v1.5.0-$(git rev-parse --short origin/release/v1.5.0)-to-dev"
+  FREEZE_FULL_SHA=$(git rev-parse origin/release/v1.5.0)
+  FREEZE_SHORT_SHA=$(git rev-parse --short "$FREEZE_FULL_SHA")
+  SYNC_BRANCH="sync/release-v1.5.0-${FREEZE_SHORT_SHA}-to-dev"
   git switch --no-track -c "$SYNC_BRANCH" origin/dev
-  git merge --no-ff origin/release/v1.5.0
+  git merge --no-ff "$FREEZE_FULL_SHA"
   git push -u origin "$SYNC_BRANCH"
   ```
   Then open a PR `"$SYNC_BRANCH" -> dev` and merge it with **Merge commit** (never Squash). `release/v1.5.0` stays untouched while `dev` receives the freeze fixes and full merge ancestry.
@@ -58,15 +60,21 @@ Rules:
 
 ### Tag commands
 
+Always fetch first, verify the CI-green **remote** commit SHA, and pass that SHA explicitly to `git tag -a` so an unpushed local commit on `main` or `release/*` can never be tagged by mistake:
+
 ```bash
-# Release candidate on release branch
-git checkout release/v1.5.0 && git pull --ff-only
-git tag -a v1.5.0-rc.1 -m "rc: v1.5.0-rc.1"
+# Release candidate on origin/release/v1.5.0 (confirm CI passed on RC_SHA)
+git fetch origin release/v1.5.0
+RC_SHA=$(git rev-parse origin/release/v1.5.0)
+git show --stat "$RC_SHA"
+git tag -a v1.5.0-rc.1 "$RC_SHA" -m "rc: v1.5.0-rc.1"
 git push origin v1.5.0-rc.1
 
-# Production release or hotfix on main (confirm with user before pushing)
-git checkout main && git pull --ff-only
-git tag -a v1.5.0 -m "release: v1.5.0"
+# Production release or hotfix on origin/main (confirm CI green and user approval first)
+git fetch origin main
+RELEASE_SHA=$(git rev-parse origin/main)
+git show --stat "$RELEASE_SHA"
+git tag -a v1.5.0 "$RELEASE_SHA" -m "release: v1.5.0"
 git push origin v1.5.0
 git show --stat v1.5.0
 ```
@@ -99,7 +107,7 @@ git show --stat v1.5.0
 
 ## Back-merging `main -> dev` and cherry-pick rules
 
-- **Default:** Always sync `main -> dev` with a **Merge commit** PR (opened automatically by `sync-main-to-dev.yml` when `dev` has not diverged). Never squash-merge `main -> dev`. When `main` and `dev` have diverged and `dev` enforces `Require branches to be up to date before merging`, `sync-main-to-dev.yml` skips the blocked direct PR and publishes copy-pasteable `sync/main-<short-sha>-to-dev` instructions in the Actions job summary (`git fetch origin`, `git switch --no-track -c ... origin/dev`, `git merge --no-ff origin/main`, Merge commit PR into `dev`) rather than merging `dev` into `main`.
+- **Default:** Always sync `main -> dev` with a **Merge commit** PR (opened automatically by `sync-main-to-dev.yml` when `dev` has not diverged). Never squash-merge `main -> dev`. When `main` and `dev` have diverged and `dev` enforces `Require branches to be up to date before merging`, `sync-main-to-dev.yml` skips the blocked direct PR and publishes copy-pasteable `sync/main-<short-sha>-to-dev` instructions in the Actions job summary (`git fetch origin`, `git switch --no-track -c ... origin/dev`, `git merge --no-ff <main-full-sha>`, Merge commit PR into `dev`) rather than merging `dev` into `main`.
 - **When to use `cherry-pick`:** Only for porting an isolated commit to an older maintenance branch, rescuing a commit made on the wrong branch, or moving a single urgent fix when a full `main -> dev` merge is temporarily blocked.
 - **When NOT to use `cherry-pick`:** Regular `dev -> main` releases or bulk commit transfers (cherry-pick creates new commit hashes and causes future merge conflicts).
 - Always pass `-x` (and `-m 1` for merge commits):
