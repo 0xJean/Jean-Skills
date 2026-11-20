@@ -9,6 +9,11 @@ if ! command -v gh >/dev/null 2>&1; then
   exit 1
 fi
 
+if ! gh auth status >/dev/null 2>&1; then
+  echo "Error: gh CLI is not authenticated. Run 'gh auth login' first." >&2
+  exit 1
+fi
+
 REPO_FLAG=()
 if [ "${1:-}" != "" ]; then
   REPO_FLAG=(--repo "$1")
@@ -18,7 +23,9 @@ upsert_label() {
   local name="$1"
   local color="$2"
   local description="$3"
-  gh label create "$name" --color "$color" --description "$description" --force "${REPO_FLAG[@]}"
+  # Use ${REPO_FLAG[@]+...} so Bash 3.2 (default on macOS) does not fail with
+  # "unbound variable" under `set -u` when REPO_FLAG is empty.
+  gh label create "$name" --color "$color" --description "$description" --force ${REPO_FLAG[@]+"${REPO_FLAG[@]}"}
 }
 
 # Type labels
@@ -41,5 +48,9 @@ upsert_label "qa-approved" "0e8a16" "Verified on staging and signed off by QA"
 upsert_label "duplicate" "cfd3d7" "Duplicate of an existing Issue"
 upsert_label "wontfix" "ffffff" "Out of scope or will not be addressed"
 upsert_label "good first issue" "7057ff" "Well-scoped task suitable for newcomers"
+
+# Add repository-specific area:* labels matching CODEOWNERS as needed, for example:
+# upsert_label "area:frontend" "1d76db" "Frontend modules"
+# upsert_label "area:backend" "0052cc" "Backend services"
 
 echo "Standard workflow labels synced successfully."

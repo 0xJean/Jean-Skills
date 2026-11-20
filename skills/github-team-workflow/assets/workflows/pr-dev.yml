@@ -67,7 +67,7 @@ jobs:
         env:
           PR_BODY: ${{ github.event.pull_request.body }}
         run: |
-          if echo "$PR_BODY" | grep -Eiq '(closes|fixes|refs)[[:space:]]+#[0-9]+'; then
+          if printf '%s\n' "$PR_BODY" | grep -Eiq '(close[sd]?|fix(e[sd])?|resolve[sd]?|refs?)[[:space:]]+([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)?#[0-9]+'; then
             echo "Linked Issue reference found."
           else
             echo "::warning::Consider linking a GitHub Issue in the PR description (Closes #123, Fixes #123, or Refs #123 for intermediate PRs)."

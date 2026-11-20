@@ -20,7 +20,7 @@ Use this reference when bootstrapping a new repository, auditing an existing rep
     deploy-dev.yml       # Auto-deploy dev on push to dev (calls ops reusable workflow)
     deploy-staging.yml   # Auto-deploy staging on v*-rc.* tag (calls ops reusable workflow)
     release.yml          # Create GitHub Release & promote artifact to production on v* tag
-    sync-main-to-dev.yml # Open Merge commit PR main -> dev after main updates
+    sync-main-to-dev.yml # Open main -> dev PR (or emit sync/* guide when diverged)
 AGENTS.md                # Self-contained agent instructions (<= 200 lines)
 CONTRIBUTING.md          # Human quick-start + link to full handbook
 docs/design/             # Single-repo large feature design docs (NNNN-short-name.md)
@@ -45,13 +45,13 @@ Keep `pr-dev.yml` and `pr-main.yml` separate so daily `dev` PRs stay fast (< 10 
 ### Adapting for Lite Single-Trunk repositories
 
 If the repository uses **Lite Single-Trunk** (no permanent `dev` branch):
-- Omit `pr-main.yml` and `sync-main-to-dev.yml`; adapt `pr-dev.yml` as `.github/workflows/pr-ci.yml` targeting `branches: [main]`.
+- Omit `pr-main.yml` and `sync-main-to-dev.yml`; adapt `pr-dev.yml` as `.github/workflows/pr-ci.yml` targeting `branches: [main]`, and trim `main`, `release/*`, and `sync/*` from `branch-check` (add `release-please--*` if using `release-please`).
 - Protect only `main` (1-2 reviewers, Squash merge, linear history optional) and `v*` tags.
 - Automated release PR tools such as `release-please` work cleanly in this mode.
 
 ## GitHub Rulesets configuration
 
-Configure three Rulesets (or Branch Protection rules if on a plan without Rulesets):
+Configure four Rulesets (or Branch Protection rules if on a plan without Rulesets):
 
 | Rule | `dev` | `main` | `release/*` | `v*` (Tag Ruleset) |
 | --- | --- | --- | --- | --- |
@@ -66,9 +66,10 @@ Configure three Rulesets (or Branch Protection rules if on a plan without Rulese
 | Creation restriction | Maintainers | Maintainers | Maintainers / Release Managers | Maintainers / Release Managers |
 | Bypass list | Repo admins (emergency) | Narrow Tech Lead / Release Manager team (for P0 hotfix 1-reviewer merge) | Repo admins | None |
 
-Also enable **Settings -> General -> Pull Requests**:
-- Enable **Allow squash merging** (default for task PRs) and **Allow merge commits** (required for `release/* -> main`, `hotfix/* -> main`, and `main -> dev`).
+Also enable **Settings -> General -> Pull Requests** and check Actions permissions:
+- Enable **Allow squash merging** (default for task PRs) and **Allow merge commits** (required for `release/* -> main`, `hotfix/* -> main`, `main -> dev`, `release/* -> dev`, and `sync/* -> dev`).
 - Enable **Automatically delete head branches**.
+- For [sync-main-to-dev.yml](../assets/workflows/sync-main-to-dev.yml), enable **Allow GitHub Actions to create and approve pull requests**; note that PRs opened with the default `GITHUB_TOKEN` do not trigger `pull_request` workflows (`pr-dev.yml`), so provide a GitHub App token (preferred) or fine-grained PAT if `dev` requires status checks on automated `main -> dev` PRs.
 
 ## Environments and operations separation
 

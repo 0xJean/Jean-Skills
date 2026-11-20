@@ -6,10 +6,10 @@ Use this reference when creating Issues, cutting task branches, writing commits,
 
 | Branch | Naming pattern | Cut from | PR target | Merge method | Lifecycle |
 | --- | --- | --- | --- | --- | --- |
-| Production trunk | `main` | Long-lived | None | None | Accepts only `release/*` and `hotfix/*`; no direct push or force push |
-| Integration trunk | `dev` | Long-lived | None | None | Accepts task branches (Squash) and `main -> dev` sync PRs (Merge commit); no force push |
-| Task branch | `feat/<id>-<slug>`, `fix/<id>-<slug>`, `chore/<slug>`, `refactor/<slug>`, `docs/<slug>` | Latest `dev` (or `main` in Lite mode) | `dev` (or `main` in Lite mode) | **Squash** | Short-lived (a few days); rebase onto target regularly; `--force-with-lease` allowed; auto-delete on merge |
-| Back-merge sync | `main` directly, or `sync/<slug>` | `main` | `dev` | **Merge commit** | Opened after every `release/*` or `hotfix/*` merges into `main` |
+| Production trunk | `main` | Long-lived | None | None | Accepts only `release/*` and `hotfix/*` (or task branches via Squash in Lite mode); no direct push or force push |
+| Integration trunk | `dev` | Long-lived (Dual-Trunk only) | None | None | Accepts task branches (Squash) and `main`/`release/*`/`sync/*` back-merges (Merge commit); no force push |
+| Task branch | `feat/<id>-<slug>`, `fix/<id>-<slug>`, `chore/<slug>`, `refactor/<slug>`, `docs/<slug>` | Remote `dev` (or `main` in Lite mode) | `dev` (or `main` in Lite mode) | **Squash** | Short-lived (a few days); rebase onto target regularly; `--force-with-lease` allowed; auto-delete on merge |
+| Back-merge sync | `main`, `release/*`, or `sync/<slug>` | `main` / `release/*` (when not diverged) or remote `dev` (for `sync/*`) | `dev` | **Merge commit** | Opened after every `release/*` or `hotfix/*` merges into `main`, or periodically during long freezes |
 
 Rules:
 - Only `main` and `dev` are long-lived branches; do not create personal long-lived branches.
