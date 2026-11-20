@@ -25,14 +25,17 @@ jobs:
       - name: Inspect main and dev ancestry
         id: check
         run: |
-          git fetch origin main dev
-          MAIN_FULL_SHA=$(git rev-parse origin/main)
+          # Explicit refspecs guarantee both origin/main and origin/dev exist even under
+          # actions/checkout's single-branch refspec on push to main.
+          git fetch origin +refs/heads/main:refs/remotes/origin/main +refs/heads/dev:refs/remotes/origin/dev
+          MAIN_FULL_SHA=$(git rev-parse --verify 'origin/main^{commit}')
+          DEV_FULL_SHA=$(git rev-parse --verify 'origin/dev^{commit}')
           MAIN_SHORT_SHA=$(git rev-parse --short "$MAIN_FULL_SHA")
           echo "main_full_sha=$MAIN_FULL_SHA" >> "$GITHUB_OUTPUT"
           echo "main_short_sha=$MAIN_SHORT_SHA" >> "$GITHUB_OUTPUT"
-          if git merge-base --is-ancestor origin/main origin/dev; then
+          if git merge-base --is-ancestor "$MAIN_FULL_SHA" "$DEV_FULL_SHA"; then
             echo "mode=up_to_date" >> "$GITHUB_OUTPUT"
-          elif git merge-base --is-ancestor origin/dev origin/main; then
+          elif git merge-base --is-ancestor "$DEV_FULL_SHA" "$MAIN_FULL_SHA"; then
             echo "mode=direct_pr" >> "$GITHUB_OUTPUT"
           else
             echo "mode=diverged" >> "$GITHUB_OUTPUT"
@@ -41,6 +44,9 @@ jobs:
       - name: Create direct back-merge PR (main -> dev)
         if: steps.check.outputs.mode == 'direct_pr'
         env:
+          # Note: Enable "Allow GitHub Actions to create and approve pull requests" in repo settings.
+          # PRs created with the default GITHUB_TOKEN do not trigger pull_request workflows (pr-dev.yml);
+          # if dev requires status checks on main -> dev PRs, supply a GitHub App token or PAT here.
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           existing=$(gh pr list --base dev --head main --state open --json number --jq '.[0].number // empty')

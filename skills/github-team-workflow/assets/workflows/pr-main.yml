@@ -1,6 +1,10 @@
 # Template workflow: replace the intentional fail-closed `exit 1` placeholder
 # in `full-verification` with this repository's real verification commands
 # before committing, otherwise every PR to main will fail.
+# Note: Because `labeled`/`unlabeled` triggers this workflow for `qa-gate`, heavy
+# E2E suites in `full-verification` will re-run when labels change. If E2E runs are
+# expensive, move `qa-gate` into its own dedicated workflow rather than adding an
+# `if:` condition to skip required jobs (GitHub treats skipped required checks as passing).
 name: PR to main
 
 on:
@@ -40,7 +44,7 @@ jobs:
         env:
           LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
         run: |
-          if echo "$LABELS" | grep -q '"qa-approved"'; then
+          if jq -e 'index("qa-approved") != null' <<< "$LABELS" >/dev/null; then
             echo "QA sign-off label present."
           else
             echo "Missing required 'qa-approved' label after staging verification."
@@ -52,6 +56,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # Note: dependency-review-action requires GitHub Dependency Graph (and GitHub
+      # Code Security / Advanced Security on private repositories). For private repos
+      # without it, replace with a stack-native audit tool (e.g. npm/pip/govulncheck).
       - uses: actions/dependency-review-action@v4
         with:
           fail-on-severity: high

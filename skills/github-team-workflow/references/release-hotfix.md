@@ -34,7 +34,7 @@ Use this reference when cutting a release branch, tagging release candidates (`r
     && git merge --no-ff "$FREEZE_FULL_SHA" \
     && git push -u origin "$SYNC_BRANCH"
   ```
-  Then open a PR `"$SYNC_BRANCH" -> dev` and merge it with **Merge commit** (never Squash). `release/v1.5.0` stays untouched while `dev` receives the freeze fixes and full merge ancestry.
+  Then open a PR `"$SYNC_BRANCH" -> dev` (titled `chore(sync): back-merge release/v1.5.0 into dev` so `title-lint` passes) and merge it with **Merge commit** (never Squash). `release/v1.5.0` stays untouched while `dev` receives the freeze fixes and full merge ancestry.
 
 ### Artifact promotion (build once, deploy everywhere)
 
@@ -103,13 +103,13 @@ git fetch origin main \
 5. **Merge into `main` (Merge commit):**
    - CI checks in `pr-main.yml` remain mandatory.
    - **Ruleset reality for expedited 1-reviewer hotfix:** Because GitHub Rulesets on `main` enforce a fixed reviewer count (2) regardless of head branch, grant Ruleset bypass permission to a narrow role/team (Tech Leads / Release Managers) so a P0 hotfix with 1 review and green CI can merge without deadlock. Record the bypass in the incident Issue.
-6. **Tag and deploy `PATCH` release:** Tag `v1.5.1` on `main`, complete production approval, and monitor metrics.
-7. **Back-merge to `dev` (mandatory):** Open a `main -> dev` Merge commit PR (or cherry-pick only when selectively porting an isolated commit).
+6. **Tag and deploy `PATCH` release:** Tag `v1.5.1` on remote `main` using the [Tag commands](#tag-commands) above, complete production approval, and monitor metrics.
+7. **Back-merge to `dev` (mandatory):** Back-merge `main` to `dev` via a Merge commit PR (using a `sync/main-<short-sha>-to-dev` branch when `main` and `dev` have diverged, or `cherry-pick -x` only when selectively porting an isolated commit).
 8. **Postmortem:** Add root cause, timeline, and follow-up test/alert tasks to the incident Issue.
 
 ## Back-merging `main -> dev` and cherry-pick rules
 
-- **Default:** Always sync `main -> dev` with a **Merge commit** PR (opened automatically by `sync-main-to-dev.yml` when `dev` has not diverged). Never squash-merge `main -> dev`. When `main` and `dev` have diverged and `dev` enforces `Require branches to be up to date before merging`, `sync-main-to-dev.yml` skips the blocked direct PR and publishes copy-pasteable `sync/main-<short-sha>-to-dev` instructions in the Actions job summary (`git fetch origin`, `git switch --no-track -c ... origin/dev`, `git merge --no-ff <main-full-sha>`, Merge commit PR into `dev`) rather than merging `dev` into `main`.
+- **Default:** Always sync `main -> dev` with a **Merge commit** PR (opened automatically by `sync-main-to-dev.yml` when `dev` has not diverged). Never squash-merge `main -> dev`. When `main` and `dev` have diverged and `dev` enforces `Require branches to be up to date before merging`, `sync-main-to-dev.yml` skips the blocked direct PR and publishes copy-pasteable `sync/main-<short-sha>-to-dev` instructions in the Actions job summary (fetching `dev` and `main` via `FETCH_HEAD`, cutting `sync/*` from remote `dev`, running `git merge --no-ff <main-full-sha>`, and opening a Merge commit PR into `dev`) rather than merging `dev` into `main`.
 - **When to use `cherry-pick`:** Only for porting an isolated commit to an older maintenance branch, rescuing a commit made on the wrong branch, or moving a single urgent fix when a full `main -> dev` merge is temporarily blocked.
 - **When NOT to use `cherry-pick`:** Regular `dev -> main` releases or bulk commit transfers (cherry-pick creates new commit hashes and causes future merge conflicts).
 - Always pass `-x` (and `-m 1` for merge commits):

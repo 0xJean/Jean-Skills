@@ -5,11 +5,11 @@
 
 ## Branching and Merge Rules
 
-- Long-lived branches: `main` (production) and `dev` (integration). Never push directly to or force-push `main`, `dev`, or `release/*`.
-- Cut task branches from latest `dev`: `feat/<id>-<slug>`, `fix/<id>-<slug>`, `chore/<slug>`, `refactor/<slug>`, `docs/<slug>`.
+- Long-lived branches: `main` (production) and `dev` (integration). Never push directly to or force-push `main`, `dev`, or `release/*`. (In Lite Single-Trunk repos, omit `dev` and merge task branches directly to `main` via Squash.)
+- Cut task branches from remote `dev` (`git fetch origin dev`): `feat/<id>-<slug>`, `fix/<id>-<slug>`, `chore/<slug>`, `refactor/<slug>`, `docs/<slug>`.
 - Merge task branches into `dev` via **Squash merge**.
 - Merge `release/*` and `hotfix/*` into `main` via **Merge commit**.
-- Back-merge `main -> dev` via **Merge commit** only (never squash-merge `main -> dev`).
+- Back-merge `main -> dev` (and freeze-period `release/* -> dev`) via **Merge commit** only—never squash-merge back-merges, and never merge `dev` into `main` or `release/*` (use a temporary `sync/*` branch cut from remote `dev` when diverged).
 
 ## Commits, PRs, and Issues
 
