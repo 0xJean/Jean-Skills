@@ -1,8 +1,11 @@
-name: PR to dev
+# Template workflow: replace the intentional fail-closed `exit 1` placeholder
+# in the `ci` job with this repository's real lint, unit test, and build commands
+# before committing, otherwise every matching PR will fail.
+name: PR to dev and release
 
 on:
   pull_request:
-    branches: [dev]
+    branches: [dev, 'release/*']
     types: [opened, edited, synchronize, reopened]
 
 permissions:
@@ -14,14 +17,22 @@ jobs:
     name: Validate source branch
     runs-on: ubuntu-latest
     steps:
-      - name: Allow task branches and main/sync back-merges
+      - name: Enforce allowed source branches for dev and release/*
         env:
           HEAD_REF: ${{ github.head_ref }}
+          BASE_REF: ${{ github.base_ref }}
         run: |
-          if [[ "$HEAD_REF" == "main" || "$HEAD_REF" =~ ^(feat|fix|chore|refactor|docs|test|ci|perf|sync)/.+ ]]; then
-            echo "Allowed source branch: $HEAD_REF"
+          if [[ "$BASE_REF" == release/* ]]; then
+            if [[ "$HEAD_REF" =~ ^(fix|docs|chore)/.+ ]]; then
+              echo "Allowed freeze-period branch '$HEAD_REF' for '$BASE_REF'."
+            else
+              echo "Freeze-period branch '$BASE_REF' accepts only fix/*, docs/*, or chore/*; got '$HEAD_REF'."
+              exit 1
+            fi
+          elif [[ "$HEAD_REF" == "main" || "$HEAD_REF" =~ ^(feat|fix|chore|refactor|docs|test|ci|perf|sync)/.+ ]]; then
+            echo "Allowed source branch '$HEAD_REF' for '$BASE_REF'."
           else
-            echo "Invalid source branch '$HEAD_REF' for dev. Use feat/*, fix/*, chore/*, refactor/*, docs/*, sync/*, or main."
+            echo "Invalid source branch '$HEAD_REF' for '$BASE_REF'. Use feat/*, fix/*, chore/*, refactor/*, docs/*, sync/*, or main."
             exit 1
           fi
 

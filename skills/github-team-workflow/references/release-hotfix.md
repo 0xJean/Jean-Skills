@@ -64,6 +64,7 @@ git show --stat v1.5.0
 
 ## Production approval and separation of duties
 
+- **QA sign-off identity:** Checking for a `qa-approved` label in `pr-main.yml` is only a lightweight signal—any user with write/triage access can apply labels. When designated QA sign-off must be identity-enforced, require a PR review from the QA team (via `CODEOWNERS` / Ruleset), a GitHub Environment reviewer gate assigned to QA, or an explicit API check for an `APPROVED` review from a QA team member.
 - Enable **Prevent self-review** on the `production` GitHub Environment so the person who pushed the tag cannot approve their own deployment.
 - Restrict the `production` Environment deployment policy to `main` and `v*` tags only.
 - **GitHub platform constraint:** GitHub Environments' built-in Required Reviewers approves deployment as soon as **any single** listed reviewer approves; it does not enforce a 2-person quorum natively. If strict multi-person production approval is required, add a Custom Deployment Protection Rule or an external approval gate.
