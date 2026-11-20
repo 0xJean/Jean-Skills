@@ -1,3 +1,8 @@
+# Note: If the `dev` Ruleset enforces "Require branches to be up to date before merging"
+# and `dev` is ahead of `main`, GitHub will block merging a direct `main -> dev` PR.
+# Never merge `dev` into `main` to satisfy that check; instead, create a temporary
+# `sync/main-to-dev` branch from `dev`, merge `origin/main` into it (`--no-ff`),
+# and open a Merge commit PR `sync/main-to-dev -> dev`.
 name: Sync main to dev
 
 on:
