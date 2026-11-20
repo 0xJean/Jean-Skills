@@ -21,7 +21,15 @@ Use this reference when cutting a release branch, tagging release candidates (`r
 - **Allowed:** bug fixes, documentation, version bumps, and changelog updates.
 - **Forbidden:** new features and unrelated refactors (those continue merging into `dev` for the next release).
 - **Protection:** protect `release/*` with the same PR, review, and CI rules as `main` (no direct push or force push).
-- **Avoid duplicate sync conflicts:** commit freeze fixes via PR into `release/vX.Y.Z`. Do **not** cherry-pick every freeze fix individually back to `dev` if you will merge `main -> dev` at release end; for long freezes, periodically merge `release/vX.Y.Z -> dev` with a Merge commit instead.
+- **Avoid duplicate sync conflicts:** commit freeze fixes via PR into `release/vX.Y.Z`. Do **not** cherry-pick every freeze fix individually back to `dev` if you will merge `main -> dev` at release end; for long freezes, periodically back-merge `release/vX.Y.Z` into `dev` with a Merge commit instead.
+- **When `dev` requires branches to be up to date before merging:** If `dev` has received next-release commits after `release/vX.Y.Z` was cut, GitHub will block a direct `release/vX.Y.Z -> dev` PR until the head branch is updated. **Never** merge `dev` into `release/vX.Y.Z` (that leaks next-release code into the frozen branch). Instead, back-merge via a temporary `sync/*` branch cut from latest `dev`:
+  ```bash
+  git checkout dev && git pull --ff-only
+  git checkout -b sync/release-v1.5.0-to-dev
+  git merge --no-ff origin/release/v1.5.0
+  git push -u origin sync/release-v1.5.0-to-dev
+  ```
+  Then open a PR `sync/release-v1.5.0-to-dev -> dev` and merge it with **Merge commit** (never Squash). `release/v1.5.0` stays untouched while `dev` receives the freeze fixes and full merge ancestry.
 
 ### Artifact promotion (build once, deploy everywhere)
 
@@ -90,7 +98,7 @@ git show --stat v1.5.0
 
 ## Back-merging `main -> dev` and cherry-pick rules
 
-- **Default:** Always sync `main -> dev` with a **Merge commit** PR (can be opened automatically by `sync-main-to-dev.yml`). Never squash-merge `main -> dev`.
+- **Default:** Always sync `main -> dev` with a **Merge commit** PR (can be opened automatically by `sync-main-to-dev.yml`). Never squash-merge `main -> dev`. If `dev` enforces `Require branches to be up to date before merging` and `dev` is ahead of `main`, use the same temporary `sync/main-to-dev` branch pattern (cut from `dev`, `git merge --no-ff origin/main`, Merge commit PR into `dev`) rather than merging `dev` into `main`.
 - **When to use `cherry-pick`:** Only for porting an isolated commit to an older maintenance branch, rescuing a commit made on the wrong branch, or moving a single urgent fix when a full `main -> dev` merge is temporarily blocked.
 - **When NOT to use `cherry-pick`:** Regular `dev -> main` releases or bulk commit transfers (cherry-pick creates new commit hashes and causes future merge conflicts).
 - Always pass `-x` (and `-m 1` for merge commits):
