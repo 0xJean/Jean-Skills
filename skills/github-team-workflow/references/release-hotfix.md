@@ -13,14 +13,14 @@ Use this reference when cutting a release branch, tagging release candidates (`r
    └── Passed -> QA sign-off (apply qa-approved label before merging PR -> main)
 5. Open PR release/vX.Y.Z -> main (Merge commit, 2 approvals incl. CODEOWNERS)
 6. Tag vX.Y.Z on main merge commit -> create GitHub Release -> promote verified rc artifact to production (post-tag Environment approval gate)
-7. Back-merge main -> dev via PR (Merge commit), delete release/vX.Y.Z, monitor production
+7. Back-merge main -> dev via PR (Merge commit), clean up (or retain) release/vX.Y.Z per Ruleset policy, monitor production
 ```
 
 ### Freeze-period rules (`release/vX.Y.Z`)
 
 - **Allowed:** bug fixes, documentation, version bumps, and changelog updates.
 - **Forbidden:** new features and unrelated refactors (those continue merging into `dev` for the next release).
-- **Protection:** protect `release/*` with the same PR, review, and CI rules as `main` (no direct push or force push).
+- **Protection and cleanup:** protect `release/*` with PR, 1 approval, `pr-dev.yml` CI, and no force push (see [repo-bootstrap.md](repo-bootstrap.md#github-rulesets-configuration)). If the team deletes `release/vX.Y.Z` after back-merging, put `Restrict deletions` in a separate lifecycle Ruleset bypassed by Maintainers / Release Managers (because `Automatically delete head branches` does not override `Restrict deletions`); otherwise keep `Restrict deletions` with `Bypass: None` and retain `release/*` branches.
 - **Avoid duplicate sync conflicts:** commit freeze fixes via PR into `release/vX.Y.Z`. Do **not** cherry-pick every freeze fix individually back to `dev` if you will merge `main -> dev` at release end; for long freezes, periodically back-merge `release/vX.Y.Z` into `dev` with a Merge commit instead.
 - **When `dev` requires branches to be up to date before merging:** If `dev` has received next-release commits after `release/vX.Y.Z` was cut, GitHub will block a direct `release/vX.Y.Z -> dev` PR until the head branch is updated. **Never** merge `dev` into `release/vX.Y.Z` (that leaks next-release code into the frozen branch). Instead, fetch explicitly, pin the remote commit SHAs via `FETCH_HEAD` (safe in `--single-branch` clones and immune to unpushed local `dev` commits), and chain commands with `&&` so nothing pushes if any step fails:
   ```bash
@@ -114,7 +114,7 @@ APPROVED_SHA="<approved-main-merge-commit-sha>" \
    - If a scheduled `release/*` is currently undergoing QA on `staging`, coordinate with QA/Release Manager to pause regular regression or use a secondary staging slot before deploying the hotfix.
 5. **Merge into `main` (Merge commit):**
    - CI checks in `pr-main.yml` and at least 1 human approval remain strictly enforced by the platform.
-   - **Layered Ruleset setup for expedited 1-reviewer hotfix:** Because GitHub Ruleset bypasses apply to an entire Ruleset, split `main` into two layered Rulesets (see [repo-bootstrap.md](repo-bootstrap.md#github-rulesets-configuration)): a **Mandatory Baseline** Ruleset enforcing 1 approval + required `pr-main.yml` CI with **no hotfix bypass**, and a **Standard Release Review** Ruleset enforcing 2 approvals + `CODEOWNERS` where only a narrow Tech Lead / Release Manager team has bypass permission for P0 hotfixes. Record every bypass in the incident Issue.
+   - **Layered Ruleset setup for expedited 1-reviewer hotfix:** Because GitHub Ruleset bypasses apply to an entire Ruleset (and cannot inspect whether a PR is truly P0), split `main` into two layered Rulesets (see [repo-bootstrap.md](repo-bootstrap.md#github-rulesets-configuration)): a **Mandatory Baseline** Ruleset enforcing 1 approval + required `pr-main.yml` CI with **no hotfix bypass**, and a **Standard Release Review** Ruleset enforcing 2 approvals + `CODEOWNERS` bypassed by a narrow Tech Lead / Release Manager team. Bypassing the second Ruleset waives both the 2nd approval and `CODEOWNERS` (move `CODEOWNERS` into the Baseline Ruleset if P0 hotfixes must still require Code Owner approval). Restrict bypass usage to P0 incidents by team policy and record every bypass in the incident Issue.
 6. **Tag and deploy `PATCH` release:** Tag `v1.5.1` on remote `main` using the [Tag commands](#tag-commands) above, complete production approval, and monitor metrics.
 7. **Back-merge to `dev` (mandatory):** Back-merge `main` to `dev` via a Merge commit PR (using a `sync/main-<short-sha>-to-dev` branch when `main` and `dev` have diverged, or `cherry-pick -x` only when selectively porting an isolated commit).
 8. **Postmortem:** Add root cause, timeline, and follow-up test/alert tasks to the incident Issue.
