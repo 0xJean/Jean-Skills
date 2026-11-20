@@ -35,36 +35,34 @@ Keep `pr-dev.yml` and `pr-main.yml` separate so daily `dev` PRs stay fast (< 10 
 | Allowed head branches | To `dev`: `feat/*`, `fix/*`, `chore/*`, `refactor/*`, `docs/*`, `main`, `release/*`, `sync/*`. To `release/*`: `fix/*`, `docs/*`, `chore/*` only (code freeze). | **Only** `release/*` and `hotfix/*` (fail all others) |
 | Required checks | Lint, unit tests + coverage, build, Conventional Commit PR title, branch-name check, `gitleaks` secret scan | All `dev` checks + integration/E2E tests, CodeQL, `dependency-review` (block high/critical), DB migration check, release checklist / `qa-approved` signal |
 | Non-blocking helpers | Path labeler, PR size warning (> 400 lines), advisory Issue-link warning on `feat/*`/`fix/*`, AI review comments | Change summary, AI review (advisory only, never counts as approval) |
-| Human approval | 1 reviewer (`CODEOWNERS` optional) | 2 reviewers including `CODEOWNERS` (P0 hotfix uses controlled bypass with 1 review + full CI) |
+| Human approval | 1 reviewer (`CODEOWNERS` optional) | 2 reviewers including `CODEOWNERS` (P0 hotfix bypasses only the 2nd-approval Ruleset; baseline 1 review + full CI stays enforced) |
 | Merge method | Squash for task branches; **Merge commit** for `main`/`release/*`/`sync/*` | **Merge commit** |
 
 **Required adaptation before committing:** Both [pr-dev.yml](../assets/workflows/pr-dev.yml) and [pr-main.yml](../assets/workflows/pr-main.yml) include an intentional fail-closed `exit 1` placeholder in their `ci` / `full-verification` jobs so an unconfigured template never appears green. Replace those placeholders with the repository's actual lint, test, and build commands (Node, Python, Go, Rust, Java, etc.) during bootstrap.
 
-**QA sign-off identity:** The `qa-approved` label check in [pr-main.yml](../assets/workflows/pr-main.yml) verifies only label presence, not *who* applied the label. Treat it as a workflow reminder; when designated QA identity enforcement is required, enforce sign-off via QA team PR review (`CODEOWNERS` / Ruleset), a GitHub Environment reviewer gate, or an API check verifying an `APPROVED` review from a QA team member.
+**QA sign-off timing and identity:** The `qa-gate` job in [pr-main.yml](../assets/workflows/pr-main.yml) runs **before merging into `main`** and requires the `qa-approved` label (verifying label presence only, not *who* applied it). Keep these two checkpoints distinct:
+- **Pre-merge (`PR -> main`):** Apply `qa-approved` before merging when using `pr-main.yml` as-is. If designated QA identity must be enforced before merge, replace `qa-gate` with a QA team PR review requirement (`CODEOWNERS` / Ruleset) or a workflow check verifying an `APPROVED` review from a QA team member.
+- **Post-merge deployment (`production` Environment):** GitHub Environment Required Reviewers runs **after** the `vX.Y.Z` tag is pushed on `main` (at deployment time) and does not satisfy `pr-main.yml`'s `qa-gate` job; configure it as a separate deployment gate (or remove `qa-gate` if pre-merge label gating is not desired).
 
 ### Adapting for Lite Single-Trunk repositories
 
 If the repository uses **Lite Single-Trunk** (no permanent `dev` branch):
 - Omit `pr-main.yml` and `sync-main-to-dev.yml`; adapt `pr-dev.yml` as `.github/workflows/pr-ci.yml` targeting `branches: [main]`, and trim `main`, `release/*`, and `sync/*` from `branch-check` (add `release-please--*` if using `release-please`).
-- Protect only `main` (1-2 reviewers, Squash merge, linear history optional) and `v*` tags.
+- Protect only `main` (1-2 reviewers, Squash merge, linear history optional) and `v*` tags (using the two layered Tag Rulesets below).
 - Automated release PR tools such as `release-please` work cleanly in this mode.
 
 ## GitHub Rulesets configuration
 
-Configure four Rulesets (or Branch Protection rules if on a plan without Rulesets):
+GitHub Ruleset bypass permissions apply to an **entire Ruleset**, and `Restrict creations` blocks everyone *except* actors in that Ruleset's bypass list. Use **layered Rulesets** so P0 hotfix bypasses cannot skip mandatory CI or the first reviewer, and so Release Managers can create new `v*` tags without being able to update or delete published tags:
 
-| Rule | `dev` | `main` | `release/*` | `v*` (Tag Ruleset) |
+| Ruleset | Target | Rules enabled | Bypass list | Purpose |
 | --- | --- | --- | --- | --- |
-| Block direct push / require PR | Yes | Yes | Yes | N/A |
-| Required approvals | 1 | 2 | 1 | N/A |
-| Require `CODEOWNERS` review | Optional | Yes | Recommended | N/A |
-| Require status checks to pass | `pr-dev.yml` jobs | `pr-main.yml` jobs | `pr-dev.yml` jobs | N/A |
-| Require branch up-to-date before merge | Yes | Yes | Yes | N/A |
-| Require conversation resolution | Yes | Yes | Yes | N/A |
-| Require linear history | **No** (breaks `main -> dev` merge commit) | **No** | **No** | N/A |
-| Block force push & deletion | Yes | Yes | Yes | Block delete & update |
-| Creation restriction | Maintainers | Maintainers | Maintainers / Release Managers | Maintainers / Release Managers |
-| Bypass list | Repo admins (emergency) | Narrow Tech Lead / Release Manager team (for P0 hotfix 1-reviewer merge) | Repo admins | None |
+| **1. `dev` Protection** | `dev` | Require PR, **1 approval**, `pr-dev.yml` checks, up-to-date, resolve conversations, block force push & deletion (`Require linear history` = **Off**) | None (or break-glass repo admins only) | Allows Squash for task branches and Merge commit for `main`/`release/*`/`sync/*` back-merges |
+| **2. `main` Mandatory Baseline** | `main` | Require PR, **1 approval**, **`pr-main.yml` checks**, up-to-date, resolve conversations, block force push & deletion (`Require linear history` = **Off**) | **None** (never grant hotfix bypass here) | Guarantees even P0 hotfixes always require >= 1 approval and green `pr-main.yml` CI |
+| **3. `main` Standard Release Review** | `main` | **2 approvals**, require `CODEOWNERS` review | Narrow **Tech Lead / Release Manager** team (P0 hotfixes only) | Layers on top of #2: normal releases need 2 approvals + `CODEOWNERS`; P0 hotfixes bypass only the 2nd approval while #2 stays enforced |
+| **4. `release/*` Protection** | `release/*` | Require PR, **1 approval**, `pr-dev.yml` checks, up-to-date, resolve conversations, block force push & deletion (do **not** enable `Restrict creations` here) | None (or break-glass repo admins only) | Enforces freeze-period PR/CI checks; if branch creation must be restricted, add a separate `Restrict creations`-only Ruleset bypassed by Maintainers / Release Managers |
+| **5. `v*` Tag Immutability** | Tag `v*` | `Restrict updates` + `Restrict deletions` | **None** | Published tags remain immutable—no role can move or delete them |
+| **6. `v*` Tag Creation** | Tag `v*` | `Restrict creations` only | **Maintainers / Release Managers** | Allows only Maintainers / Release Managers to push new `v*` tags without granting delete/update bypass on #5 |
 
 Also enable **Settings -> General -> Pull Requests** and check Actions permissions:
 - Enable **Allow squash merging** (default for task PRs) and **Allow merge commits** (required for `release/* -> main`, `hotfix/* -> main`, `main -> dev`, `release/* -> dev`, and `sync/* -> dev`).

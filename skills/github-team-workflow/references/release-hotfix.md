@@ -10,9 +10,9 @@ Use this reference when cutting a release branch, tagging release candidates (`r
 3. Tag vX.Y.Z-rc.1 on release/vX.Y.Z -> build artifact & auto-deploy staging
 4. QA regression on staging
    ├── Failed -> fix via PR on release/vX.Y.Z -> tag vX.Y.Z-rc.2 -> re-verify
-   └── Passed -> QA sign-off (qa-approved label or environment approval)
+   └── Passed -> QA sign-off (apply qa-approved label before merging PR -> main)
 5. Open PR release/vX.Y.Z -> main (Merge commit, 2 approvals incl. CODEOWNERS)
-6. Tag vX.Y.Z on main merge commit -> create GitHub Release -> promote verified rc artifact to production (manual approval gate)
+6. Tag vX.Y.Z on main merge commit -> create GitHub Release -> promote verified rc artifact to production (post-tag Environment approval gate)
 7. Back-merge main -> dev via PR (Merge commit), delete release/vX.Y.Z, monitor production
 ```
 
@@ -56,7 +56,7 @@ Tags are the contract between engineering and operations pipelines. Define tag p
 Rules:
 - Use annotated tags (`git tag -a`) with SemVer: `MAJOR` (breaking), `MINOR` (backward-compatible feature), `PATCH` (backward-compatible bug fix / hotfix).
 - Never tag `dev`.
-- Protect `v*` with a Tag Ruleset (disallow delete and update; restrict creation to maintainers/Release Managers).
+- Protect `v*` with two layered Tag Rulesets: an immutability Ruleset (`Restrict updates` + `Restrict deletions`, **no bypass**) and a separate creation Ruleset (`Restrict creations` only, bypassed by Maintainers / Release Managers); see [repo-bootstrap.md](repo-bootstrap.md#github-rulesets-configuration).
 - **Tags are immutable:** If a local tag is wrong before push, delete and recreate locally. Once pushed, never delete or move it—increment `-rc.(N+1)` or publish a new `PATCH` version.
 - **Changelog tooling:** In dual-trunk + `release/*` workflows, use `git-cliff`, `conventional-changelog`, or GitHub's built-in `Generate release notes` rather than `release-please` or `semantic-release` (which expect single-trunk release PRs and conflict with manual `release/*` branches). Reserve `release-please` for Lite Single-Trunk repositories.
 
@@ -95,7 +95,7 @@ APPROVED_SHA="<approved-main-merge-commit-sha>" \
 
 ## Production approval and separation of duties
 
-- **QA sign-off identity:** Checking for a `qa-approved` label in `pr-main.yml` is only a lightweight signal—any user with write/triage access can apply labels. When designated QA sign-off must be identity-enforced, require a PR review from the QA team (via `CODEOWNERS` / Ruleset), a GitHub Environment reviewer gate assigned to QA, or an explicit API check for an `APPROVED` review from a QA team member.
+- **QA sign-off timing and identity:** Keep pre-merge PR sign-off and post-tag deployment approval distinct. The default `qa-gate` job in `pr-main.yml` runs **before merging into `main`** and requires the `qa-approved` label (a lightweight signal that does not verify labeler identity). If designated QA identity must be enforced pre-merge, replace `qa-gate` in `pr-main.yml` with a QA team PR review requirement (`CODEOWNERS` / Ruleset) or an API check verifying an `APPROVED` review from a QA team member. A GitHub Environment approval gate runs **after** tagging at deployment time and does not satisfy `pr-main.yml`'s `qa-gate` label check unless `qa-gate` is removed or replaced.
 - Enable **Prevent self-review** on the `production` GitHub Environment so the person who pushed the tag cannot approve their own deployment.
 - Restrict the `production` Environment deployment policy to `main` and `v*` tags only.
 - **GitHub platform constraint:** GitHub Environments' built-in Required Reviewers approves deployment as soon as **any single** listed reviewer approves; it does not enforce a 2-person quorum natively. If strict multi-person production approval is required, add a Custom Deployment Protection Rule or an external approval gate.
@@ -113,8 +113,8 @@ APPROVED_SHA="<approved-main-merge-commit-sha>" \
    - Deploy via a hotfix RC tag (`v1.5.1-rc.1`) or an explicit `workflow_dispatch` on the staging workflow.
    - If a scheduled `release/*` is currently undergoing QA on `staging`, coordinate with QA/Release Manager to pause regular regression or use a secondary staging slot before deploying the hotfix.
 5. **Merge into `main` (Merge commit):**
-   - CI checks in `pr-main.yml` remain mandatory.
-   - **Ruleset reality for expedited 1-reviewer hotfix:** Because GitHub Rulesets on `main` enforce a fixed reviewer count (2) regardless of head branch, grant Ruleset bypass permission to a narrow role/team (Tech Leads / Release Managers) so a P0 hotfix with 1 review and green CI can merge without deadlock. Record the bypass in the incident Issue.
+   - CI checks in `pr-main.yml` and at least 1 human approval remain strictly enforced by the platform.
+   - **Layered Ruleset setup for expedited 1-reviewer hotfix:** Because GitHub Ruleset bypasses apply to an entire Ruleset, split `main` into two layered Rulesets (see [repo-bootstrap.md](repo-bootstrap.md#github-rulesets-configuration)): a **Mandatory Baseline** Ruleset enforcing 1 approval + required `pr-main.yml` CI with **no hotfix bypass**, and a **Standard Release Review** Ruleset enforcing 2 approvals + `CODEOWNERS` where only a narrow Tech Lead / Release Manager team has bypass permission for P0 hotfixes. Record every bypass in the incident Issue.
 6. **Tag and deploy `PATCH` release:** Tag `v1.5.1` on remote `main` using the [Tag commands](#tag-commands) above, complete production approval, and monitor metrics.
 7. **Back-merge to `dev` (mandatory):** Back-merge `main` to `dev` via a Merge commit PR (using a `sync/main-<short-sha>-to-dev` branch when `main` and `dev` have diverged, or `cherry-pick -x` only when selectively porting an isolated commit).
 8. **Postmortem:** Add root cause, timeline, and follow-up test/alert tasks to the incident Issue.
